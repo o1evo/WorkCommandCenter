@@ -15,6 +15,7 @@
   --medium: #d29922;
   --low: #3fb950;
   --note: #8b949e;
+  --resolved: #2ea043;
 }
 
 * { box-sizing: border-box; }
@@ -74,6 +75,38 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 }
 .diff td.gutter { width: 1%; user-select: none; color: var(--muted); padding: 0 4px; }
 .diff td.code { width: 98%; }
+/* Prism token colors — tuned to the GitHub-dark palette above. */
+.diff .token.comment,
+.diff .token.prolog,
+.diff .token.doctype,
+.diff .token.cdata { color: #8b949e; font-style: italic; }
+.diff .token.punctuation { color: #c9d1d9; }
+.diff .token.keyword,
+.diff .token.boolean,
+.diff .token.important,
+.diff .token.atrule { color: #ff7b72; }
+.diff .token.string,
+.diff .token.char,
+.diff .token.attr-value,
+.diff .token.regex { color: #a5d6ff; }
+.diff .token.number,
+.diff .token.symbol,
+.diff .token.constant { color: #79c0ff; }
+.diff .token.function,
+.diff .token.method,
+.diff .token.builtin { color: #d2a8ff; }
+.diff .token.class-name,
+.diff .token.title { color: #ffa657; }
+.diff .token.operator,
+.diff .token.entity,
+.diff .token.url { color: #ff7b72; background: transparent; }
+.diff .token.variable,
+.diff .token.attr-name,
+.diff .token.property,
+.diff .token.tag,
+.diff .token.key { color: #7ee787; }
+.diff .token.namespace { opacity: .8; }
+
 .row-add { background: var(--add-bg); }
 .row-add td.gutter { background: var(--add-gutter); color: var(--low); }
 .row-del { background: var(--del-bg); }
@@ -81,14 +114,15 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 
 .annotations { padding: 10px 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
 .annotation {
-  display: flex; gap: 8px; align-items: baseline; padding: 8px 10px;
+  display: flex; flex-direction: column; gap: 4px; padding: 8px 10px;
   background: var(--panel-2); border-radius: 6px; border-left: 3px solid var(--note);
 }
 .annotation.sev-blocker { border-left-color: var(--blocker); }
 .annotation.sev-high { border-left-color: var(--high); }
 .annotation.sev-medium { border-left-color: var(--medium); }
 .annotation.sev-low { border-left-color: var(--low); }
-.annotation-note { flex: 1; }
+.annotation.sev-resolved { border-left-color: var(--resolved); opacity: .72; }
+.annotation-note { flex: 0 0 auto; }
 .tag { color: var(--muted); font-family: ui-monospace, monospace; font-size: 11px; }
 
 .sev-badge {
@@ -100,6 +134,7 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 .sev-badge.sev-medium { background: var(--medium); }
 .sev-badge.sev-low { background: var(--low); }
 .sev-badge.sev-note { background: var(--note); }
+.sev-badge.sev-resolved { background: var(--resolved); }
 
 .thread-toggle {
   display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
@@ -145,3 +180,62 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 
 .app-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
 .app-footer code { color: var(--link); }
+
+/* --- Message bodies: fenced code blocks + inline code (reuse diff palette) --- */
+.msg-text { white-space: pre-wrap; word-break: break-word; }
+.msg-code {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  overflow-x: auto;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.msg-code code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  white-space: pre;
+  color: #c9d1d9;
+}
+.msg-code-lang {
+  position: absolute; top: 4px; right: 8px;
+  font-size: 10px; color: var(--muted); text-transform: lowercase;
+}
+.msg-inline-code {
+  font-family: ui-monospace, monospace; font-size: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 4px; padding: 0 4px; color: var(--link);
+}
+.msg-code .token.comment, .msg-code .token.prolog,
+.msg-code .token.doctype, .msg-code .token.cdata { color: #8b949e; font-style: italic; }
+.msg-code .token.punctuation { color: #c9d1d9; }
+.msg-code .token.keyword, .msg-code .token.boolean,
+.msg-code .token.important, .msg-code .token.atrule { color: #ff7b72; }
+.msg-code .token.string, .msg-code .token.char,
+.msg-code .token.attr-value, .msg-code .token.regex { color: #a5d6ff; }
+.msg-code .token.number, .msg-code .token.symbol, .msg-code .token.constant { color: #79c0ff; }
+.msg-code .token.function, .msg-code .token.method, .msg-code .token.builtin { color: #d2a8ff; }
+.msg-code .token.class-name, .msg-code .token.title { color: #ffa657; }
+.msg-code .token.operator, .msg-code .token.entity, .msg-code .token.url { color: #ff7b72; }
+.msg-code .token.variable, .msg-code .token.attr-name,
+.msg-code .token.property, .msg-code .token.tag, .msg-code .token.key { color: #7ee787; }
+.msg-code .token.namespace { opacity: .8; }
+
+/* --- Per-finding threads --- */
+.annotation-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.annotation-note { margin-bottom: 6px; }
+.discussion { margin-top: 6px; }
+.annotation .discussion { margin-top: 8px; padding-top: 6px; border-top: 1px dashed var(--border); }
+.hunk > .discussion { margin-top: 10px; opacity: 0.85; }
+
+/* --- Per-line inline threads --- */
+.ln-comment { cursor: pointer; }
+.ln-comment:hover { background: var(--accent-bg, #1f6feb22); color: var(--link); }
+.line-has-comments { font-size: 11px; }
+.line-thread-row td { padding: 0; background: var(--panel); }
+.line-thread { padding: 8px 12px 12px; border-left: 3px solid var(--link); margin: 2px 0; }
+.line-thread-head { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.line-thread-close { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.line-thread-close:hover { color: var(--text); }

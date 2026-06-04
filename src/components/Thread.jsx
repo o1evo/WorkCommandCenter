@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import MessageText from './MessageText.jsx';
 
 // A chat thread (per-hunk or general). Renders messages and an input that posts
 // a role:"author" message. Reviewer replies arrive via polling.
@@ -36,7 +37,7 @@ export default function Thread({ messages, onSend, compact }) {
             )}
             <span className="msg-ts">{fmt(m.ts)}</span>
           </div>
-          <div className="msg-text">{m.text}</div>
+          <MessageText text={m.text} />
         </div>
       ))}
       <form className="thread-form" onSubmit={send}>

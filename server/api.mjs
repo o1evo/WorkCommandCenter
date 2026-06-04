@@ -6,11 +6,13 @@
 import {
   readFileSync,
   writeFileSync,
+  renameSync,
   existsSync,
   statSync,
   readdirSync,
 } from 'node:fs';
 import { join } from 'node:path';
+import { ensureAnnotationIds, annotationIds } from './annotations.mjs';
 
 export function createApi(reviewsDir) {
   function reviewPath(id) {
@@ -23,6 +25,7 @@ export function createApi(reviewsDir) {
     const p = reviewPath(id);
     if (!p || !existsSync(p)) return null;
     const data = JSON.parse(readFileSync(p, 'utf8'));
+    ensureAnnotationIds(data); // deterministic ids so threads can key per finding
     data._mtime = statSync(p).mtimeMs; // lets the client skip no-op re-renders
     return data;
   }
@@ -31,7 +34,12 @@ export function createApi(reviewsDir) {
     const p = reviewPath(id);
     const copy = { ...data };
     delete copy._mtime;
-    writeFileSync(p, JSON.stringify(copy, null, 2) + '\n');
+    // Atomic write: a concurrent reader (the 3s poll, or a reviewer Claude
+    // session editing the same file) sees either the old or the new complete
+    // file, never a torn one. rename(2) is atomic within a filesystem.
+    const tmp = `${p}.tmp.${process.pid}`;
+    writeFileSync(tmp, JSON.stringify(copy, null, 2) + '\n');
+    renameSync(tmp, p);
   }
 
   function listReviews() {
@@ -83,8 +91,15 @@ export function createApi(reviewsDir) {
         const target = body.target || 'general';
         const text = (body.text || '').trim();
         if (!text) return json(res, 400, { error: 'text is required' });
-        if (target !== 'general' && !data.hunks.some((h) => h.id === target)) {
-          return json(res, 400, { error: `unknown hunk: ${target}` });
+        const hunkIds = new Set(data.hunks.map((h) => h.id));
+        const lineMatch = /^(.+)#L\d+$/.exec(target); // per-line thread: <hunkId>#L<n>
+        const known =
+          target === 'general' ||
+          hunkIds.has(target) || // hunk-level thread
+          annotationIds(data).has(target) || // per-finding thread
+          (lineMatch && hunkIds.has(lineMatch[1])); // per-line thread
+        if (!known) {
+          return json(res, 400, { error: `unknown target: ${target}` });
         }
         data.threads[target] = data.threads[target] || [];
         const msg = {
@@ -112,6 +127,7 @@ export function createApi(reviewsDir) {
           return json(res, 400, { error: 'annotations must be an array' });
         }
         hunk.annotations = body.annotations;
+        ensureAnnotationIds(data); // give new annotations stable thread ids
         save(id, data);
         return json(res, 200, hunk.annotations);
       }

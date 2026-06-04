@@ -19,6 +19,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseDiff } from '../server/diff.mjs';
+import { ensureAnnotationIds } from '../server/annotations.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -156,6 +157,7 @@ function main() {
   };
 
   if (args.seed) applySeed(review, args.seed);
+  ensureAnnotationIds(review); // per-finding thread ids
   delete review._seq;
 
   const dir = join(ROOT, 'reviews', id);

@@ -110,8 +110,8 @@ export default function App() {
             <HunkView
               key={h.id}
               hunk={h}
-              messages={threads[h.id] || []}
-              onSend={(t) => send(h.id, t)}
+              threads={threads}
+              onSend={send}
             />
           ))}
         </section>
