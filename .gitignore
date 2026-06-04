@@ -1,0 +1,7 @@
+# Review data contains proprietary source under review — never commit it.
+reviews/
+
+node_modules/
+dist/
+*.log
+.DS_Store
