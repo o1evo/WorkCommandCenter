@@ -1,0 +1,19 @@
+{
+  "name": "code-reviews",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local, private, interactive code-review tool with a file-bridge reviewer chat.",
+  "scripts": {
+    "review": "vite",
+    "import": "node bin/import.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}
