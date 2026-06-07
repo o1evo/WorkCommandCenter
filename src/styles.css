@@ -157,6 +157,8 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 .msg-status.pending { color: var(--medium); }
 .msg-status.answered { color: var(--low); }
 .msg-ts { margin-left: auto; opacity: .7; }
+.msg-delete { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 4px; opacity: .55; transition: opacity .12s, color .12s; }
+.msg-delete:hover { opacity: 1; color: var(--blocker, #e5534b); }
 .msg-text { white-space: pre-wrap; }
 
 .thread-form { display: flex; gap: 8px; align-items: flex-end; }
@@ -237,5 +239,171 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 .line-thread-row td { padding: 0; background: var(--panel); }
 .line-thread { padding: 8px 12px 12px; border-left: 3px solid var(--link); margin: 2px 0; }
 .line-thread-head { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
-.line-thread-close { margin-left: auto; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
+.line-thread-delete { margin-left: auto; background: none; border: 1px solid transparent; color: var(--muted); cursor: pointer; font-size: 11px; padding: 1px 6px; border-radius: 4px; }
+.line-thread-delete:hover { color: var(--blocker, #e5534b); border-color: var(--blocker, #e5534b); }
+.line-thread-close { margin-left: 4px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; }
 .line-thread-close:hover { color: var(--text); }
+
+/* ── Work Control Center: tabs, brand, bespoke Log pages ───────────────── */
+
+.brand {
+  font-size: 11px; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--muted); margin-bottom: 4px;
+}
+
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; }
+.tab {
+  background: transparent; border: 1px solid transparent; border-bottom: none;
+  color: var(--muted); padding: 8px 16px; font-size: 14px; cursor: pointer;
+  border-radius: 6px 6px 0 0; display: inline-flex; align-items: center; gap: 6px;
+}
+.tab:hover { color: var(--text); }
+.tab.active {
+  color: var(--text); background: var(--panel);
+  border-color: var(--border); border-bottom-color: var(--panel);
+  margin-bottom: -1px;
+}
+.tabs { border-bottom: 1px solid var(--border); }
+.tab-badge, .page-thread-badge {
+  background: var(--high); color: #fff; border-radius: 10px;
+  font-size: 11px; padding: 0 7px; line-height: 18px; min-width: 18px; text-align: center;
+}
+
+.wcc-page { animation: fade .15s ease; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+.wcc-page-error {
+  background: var(--del-bg); border: 1px solid var(--blocker);
+  border-radius: 8px; padding: 16px; margin: 12px 0;
+}
+.wcc-page-error pre {
+  white-space: pre-wrap; overflow-x: auto; background: #0008;
+  padding: 10px; border-radius: 6px; font-size: 12px; color: #f0a3a0;
+}
+
+.page-thread {
+  border: 1px solid var(--border); border-radius: 8px;
+  background: var(--panel-2); padding: 10px 12px; margin: 10px 0;
+}
+.page-thread-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Phase 2: free-selection comment layer ─────────────────────────────── */
+
+.wcc-comments { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+
+.wcc-hl {
+  position: absolute; pointer-events: auto; cursor: pointer;
+  background: rgba(210, 153, 34, 0.22);
+  border-bottom: 2px solid var(--medium);
+  border-radius: 2px;
+}
+.wcc-hl:hover { background: rgba(210, 153, 34, 0.34); }
+.wcc-hl.active { background: rgba(210, 153, 34, 0.40); }
+.wcc-hl.resolved {
+  background: rgba(46, 160, 67, 0.12);
+  border-bottom-color: rgba(46, 160, 67, 0.5);
+}
+
+.wcc-comment-btn {
+  position: absolute; pointer-events: auto; z-index: 7;
+  background: var(--medium); color: #1c1300; border: none;
+  border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; box-shadow: 0 2px 8px #0008;
+}
+.wcc-comment-btn:hover { filter: brightness(1.08); }
+
+.wcc-popover {
+  position: absolute; pointer-events: auto; z-index: 8; width: 360px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 10px 12px; box-shadow: 0 8px 30px #000a;
+}
+.wcc-popover-head {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.wcc-quote { color: var(--muted); font-style: italic; font-size: 12px; flex: 1; }
+.wcc-popover-actions { display: flex; gap: 4px; flex-shrink: 0; }
+.wcc-popover-actions button {
+  background: transparent; border: 1px solid var(--border); color: var(--muted);
+  border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer;
+}
+.wcc-popover-actions button:hover { color: var(--text); border-color: var(--muted); }
+
+.wcc-orphans { position: absolute; top: -8px; right: 0; pointer-events: auto; z-index: 7; }
+.wcc-orphans-chip {
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+  border-radius: 12px; padding: 2px 10px; font-size: 11px; cursor: pointer;
+}
+.wcc-orphans-list {
+  position: absolute; right: 0; margin-top: 4px; width: 300px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px; box-shadow: 0 8px 30px #000a;
+}
+.wcc-orphan { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.wcc-orphan button {
+  margin-left: auto; background: transparent; border: 1px solid var(--border);
+  color: var(--muted); border-radius: 5px; padding: 1px 7px; font-size: 11px; cursor: pointer;
+}
+
+/* ── Markdown rendering + QA Plan tab + copy button ────────────────────── */
+
+.qa { max-width: 880px; }
+.qa-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.qa-file { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; }
+
+.copy-btn {
+  background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 6px; padding: 5px 12px; font-size: 13px; cursor: pointer; white-space: nowrap;
+}
+.copy-btn:hover { border-color: var(--muted); }
+
+.md-body { color: var(--text); line-height: 1.6; }
+.md-body h1, .md-body h2, .md-body h3, .md-body h4 {
+  margin: 1.4em 0 .5em; line-height: 1.25;
+}
+.md-body h1 { font-size: 24px; border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+.md-body h2 { font-size: 19px; border-bottom: 1px solid var(--border); padding-bottom: .3em; }
+.md-body h3 { font-size: 16px; }
+.md-body h4 { font-size: 14px; color: var(--muted); }
+.md-body p { margin: .6em 0; }
+.md-body ul, .md-body ol { margin: .5em 0; padding-left: 1.6em; }
+.md-body li { margin: .25em 0; }
+.md-body li input[type="checkbox"] { margin-right: .5em; }
+.md-body a { color: var(--link); text-decoration: none; }
+.md-body a:hover { text-decoration: underline; }
+.md-body code {
+  background: #0d1117; border: 1px solid var(--border); border-radius: 4px;
+  padding: .1em .35em; font-size: 85%;
+}
+.md-body pre {
+  background: #0d1117; border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px; overflow-x: auto;
+}
+.md-body pre code { background: none; border: none; padding: 0; font-size: 12.5px; }
+.md-body blockquote {
+  margin: .6em 0; padding: .2em 1em; color: var(--muted);
+  border-left: 3px solid var(--border);
+}
+.md-body hr { border: none; border-top: 1px solid var(--border); margin: 1.5em 0; }
+.md-body table { border-collapse: collapse; margin: .8em 0; width: 100%; }
+.md-body th, .md-body td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; }
+.md-body th { background: var(--panel-2); }
+
+/* --- Click a finding → toggle a sticky highlight on the lines it concerns --- */
+.annotation-jump { cursor: pointer; }
+.annotation-jump:hover .annotation-jump-hint { color: var(--link); }
+.annotation-jump-hint { margin-left: auto; font-size: 11px; color: var(--muted); white-space: nowrap; }
+.annotation-active .annotation-jump-hint { color: var(--link); }
+.annotation-active { box-shadow: 0 0 0 1px var(--link) inset; }
+/* steady highlight — stays until the finding is toggled off (brief pulse on apply) */
+.row.wcc-hl-line td { box-shadow: inset 0 0 0 9999px rgba(88,166,255,0.20); animation: wcc-hl-pulse 0.5s ease-out; }
+@keyframes wcc-hl-pulse {
+  0%   { box-shadow: inset 0 0 0 9999px rgba(88,166,255,0.45); }
+  100% { box-shadow: inset 0 0 0 9999px rgba(88,166,255,0.20); }
+}

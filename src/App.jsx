@@ -1,7 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { listReviews, getReview, postMessage } from './api.js';
+import { listReviews, getReview, postMessage, deleteMessage, deleteThread, postAnchor, setAnchorState } from './api.js';
 import HunkView from './components/HunkView.jsx';
 import Thread from './components/Thread.jsx';
+import PageRuntime, { buildWcc } from './components/PageRuntime.jsx';
+import Markdown from './components/Markdown.jsx';
+import CopyButton from './components/CopyButton.jsx';
 
 const POLL_MS = 3000;
 
@@ -10,6 +13,7 @@ export default function App() {
   const [currentId, setCurrentId] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
+  const [view, setView] = useState(null); // null → default per task (Log if it has a page)
   const mtimeRef = useRef(null);
 
   // Load the list of reviews once, pick the first by default.
@@ -27,6 +31,7 @@ export default function App() {
     if (!currentId) return;
     let alive = true;
     mtimeRef.current = null;
+    setView(null); // reset to per-task default when switching tasks
 
     async function tick() {
       try {
@@ -54,12 +59,38 @@ export default function App() {
     };
   }, [currentId]);
 
+  // Force an immediate refresh rather than waiting for the next poll.
+  async function refresh() {
+    const next = await getReview(currentId);
+    if (next) {
+      mtimeRef.current = next._mtime;
+      setData(next);
+    }
+  }
+
   async function send(target, text) {
     await postMessage(currentId, target, text);
-    // Force an immediate refresh rather than waiting for the next poll.
-    const next = await getReview(currentId);
-    mtimeRef.current = next._mtime;
-    setData(next);
+    await refresh();
+  }
+
+  async function removeMessage(target, messageId) {
+    await deleteMessage(currentId, target, messageId);
+    await refresh();
+  }
+
+  async function removeThread(target) {
+    await deleteThread(currentId, target);
+    await refresh();
+  }
+
+  async function createAnchor(anchor) {
+    await postAnchor(currentId, anchor);
+    await refresh();
+  }
+
+  async function changeAnchorState(key, state) {
+    await setAnchorState(currentId, key, state);
+    await refresh();
   }
 
   if (error && !data) return <div className="app"><Banner error={error} /></div>;
@@ -69,11 +100,14 @@ export default function App() {
   const { review, hunks, threads } = data;
   const byFile = groupByFile(hunks);
   const totalPending = countPending(threads);
+  const hasPage = !!data._page;
+  const activeView = view || (hasPage ? 'log' : 'review');
 
   return (
     <div className="app">
       <header className="app-header">
         <div className="header-left">
+          <div className="brand">Work Control Center</div>
           <h1>{review.title}</h1>
           <div className="review-meta">
             <code>{review.base} → {review.head}</code>
@@ -93,34 +127,116 @@ export default function App() {
         </div>
       </header>
 
+      <nav className="tabs">
+        <button
+          className={`tab ${activeView === 'log' ? 'active' : ''}`}
+          onClick={() => setView('log')}
+        >
+          Log
+        </button>
+        <button
+          className={`tab ${activeView === 'review' ? 'active' : ''}`}
+          onClick={() => setView('review')}
+        >
+          Code Review
+          {totalPending > 0 && <span className="tab-badge">{totalPending}</span>}
+        </button>
+        <button
+          className={`tab ${activeView === 'qa' ? 'active' : ''}`}
+          onClick={() => setView('qa')}
+        >
+          QA Plan
+        </button>
+      </nav>
+
       {error && <Banner error={error} />}
 
+      {activeView === 'log' && (
+        hasPage ? (
+          <PageRuntime
+            source={data._page.source}
+            wcc={buildWcc({
+              id: currentId,
+              data,
+              onSend: send,
+              onDelete: removeMessage,
+              onAnchor: createAnchor,
+              onAnchorState: changeAnchorState,
+            })}
+          />
+        ) : (
+          <NoPage id={currentId} />
+        )
+      )}
+
+      {activeView === 'review' && (
+        <ReviewView review={review} byFile={byFile} threads={threads} onSend={send} onDelete={removeMessage} onDeleteThread={removeThread} />
+      )}
+
+      {activeView === 'qa' && <QaView id={currentId} qa={data._qa} />}
+
+      <footer className="app-footer">
+        Local file-bridge · <code>reviews/{review.id}/</code> ·
+        Log page <code>Page.jsx</code> · review <code>thread.json</code> ·
+        protocol in <code>CLAUDE.md</code>
+      </footer>
+    </div>
+  );
+}
+
+function ReviewView({ review, byFile, threads, onSend, onDelete, onDeleteThread }) {
+  return (
+    <>
       <section className="general">
         <h2>General discussion</h2>
-        <Thread
-          messages={threads.general || []}
-          onSend={(t) => send('general', t)}
-        />
+        <Thread messages={threads.general || []} onSend={(t) => onSend('general', t)}
+          onDelete={(mid) => onDelete('general', mid)} />
       </section>
 
       {Object.entries(byFile).map(([file, fileHunks]) => (
         <section key={file} className="file">
           <h2 className="file-name">{file}</h2>
           {fileHunks.map((h) => (
-            <HunkView
-              key={h.id}
-              hunk={h}
-              threads={threads}
-              onSend={send}
-            />
+            <HunkView key={h.id} hunk={h} threads={threads} onSend={onSend} onDelete={onDelete} onDeleteThread={onDeleteThread} />
           ))}
         </section>
       ))}
+    </>
+  );
+}
 
-      <footer className="app-footer">
-        Local file-bridge review · data in <code>reviews/{review.id}/thread.json</code> ·
-        reviewer protocol in <code>CLAUDE.md</code>
-      </footer>
+function QaView({ id, qa }) {
+  if (!qa) {
+    return (
+      <div className="empty">
+        <h1>No QA plan yet</h1>
+        <p>
+          Add a markdown QA plan at <code>reviews/{id}/qa-plan.md</code> — it renders here and can be
+          copied out and handed to QA. Group tests by capability, tier them P0–P3, and give each a
+          Do / Pass / Hits.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <section className="qa">
+      <div className="qa-toolbar">
+        <span className="qa-file">reviews/{id}/qa-plan.md</span>
+        <CopyButton text={qa.source} label="Copy markdown" />
+      </div>
+      <Markdown text={qa.source} />
+    </section>
+  );
+}
+
+function NoPage({ id }) {
+  return (
+    <div className="empty">
+      <h1>No Log page yet</h1>
+      <p>
+        Ask Claude to build an interactive page for this task — it writes{' '}
+        <code>reviews/{id}/Page.jsx</code> and it renders here live.
+      </p>
     </div>
   );
 }

@@ -23,6 +23,46 @@ export async function postMessage(id, target, text) {
   return r.json();
 }
 
+export async function deleteMessage(id, target, messageId) {
+  const r = await fetch(`/api/review/${encodeURIComponent(id)}/message-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target, messageId }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to delete message');
+  return r.json();
+}
+
+export async function deleteThread(id, target) {
+  const r = await fetch(`/api/review/${encodeURIComponent(id)}/thread-delete`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to delete thread');
+  return r.json();
+}
+
+export async function postAnchor(id, anchor) {
+  const r = await fetch(`/api/review/${encodeURIComponent(id)}/anchors`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(anchor),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to save anchor');
+  return r.json();
+}
+
+export async function setAnchorState(id, key, state) {
+  const r = await fetch(`/api/review/${encodeURIComponent(id)}/anchor-state`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key, state }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to set anchor state');
+  return r.json();
+}
+
 export async function postAnnotations(id, target, annotations) {
   const r = await fetch(`/api/review/${encodeURIComponent(id)}/annotations`, {
     method: 'POST',

@@ -2,11 +2,22 @@ import React, { useState } from 'react';
 import MessageText from './MessageText.jsx';
 
 // A chat thread (per-hunk or general). Renders messages and an input that posts
-// a role:"author" message. Reviewer replies arrive via polling.
-export default function Thread({ messages, onSend, compact }) {
+// a role:"author" message. Reviewer replies arrive via polling. When `onDelete`
+// is supplied, each message gets a × to remove it (onDelete(messageId)).
+export default function Thread({ messages, onSend, onDelete, compact }) {
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const pending = messages.filter((m) => m.role === 'author' && !m.answered).length;
+
+  async function remove(m) {
+    if (!onDelete) return;
+    if (!window.confirm('Delete this comment? This cannot be undone.')) return;
+    try {
+      await onDelete(m.id);
+    } catch (err) {
+      alert(err.message);
+    }
+  }
 
   async function send(e) {
     e.preventDefault();
@@ -36,6 +47,16 @@ export default function Thread({ messages, onSend, compact }) {
               </span>
             )}
             <span className="msg-ts">{fmt(m.ts)}</span>
+            {onDelete && (
+              <button
+                type="button"
+                className="msg-delete"
+                title="delete this comment"
+                onClick={() => remove(m)}
+              >
+                ×
+              </button>
+            )}
           </div>
           <MessageText text={m.text} />
         </div>
