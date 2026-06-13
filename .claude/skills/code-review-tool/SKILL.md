@@ -1,6 +1,6 @@
 ---
 name: code-review-tool
-description: Drive the local file-bridge code-review app (the "Work Command Center" / CodeReviews app) — a private Vite+React viewer that renders an annotated diff plus per-hunk chat threads, persisted to reviews/<id>/thread.json. Use when the user asks to answer review questions / reply in the review app, import or refresh a diff for review, seed findings as annotations, start/open the review app, or mentions "the review app", "CodeReviews", "Work Command Center", "thread.json", "review widget", or asks you to participate as the reviewer. The app and a Claude session communicate ONLY through thread.json (no MCP, no network); the app polls it every 3s.
+description: Drive the local file-bridge code-review app (the "Work Command Center" / CodeReviews app) — a private Vite+React viewer that renders an annotated diff plus per-hunk chat threads, persisted to reviews/<id>/thread.json. Use when the user asks to answer review questions / reply in the review app, import or refresh a diff for review, seed findings as annotations, start/open the review app, or mentions "the review app", "CodeReviews", "Work Command Center", "WCC", "thread.json", "review widget", or asks you to participate as the reviewer. The app and a Claude session communicate ONLY through thread.json (no MCP, no network); the app polls it every 3s.
 ---
 
 # Code Review Tool

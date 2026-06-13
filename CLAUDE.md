@@ -1,3 +1,34 @@
+# Work Command Center (WCC) — Claude operating guide
+
+## First-run setup (do this once, before anything else)
+
+If a user asks to **"use WCC" / "set up the Work Command Center" / "start tracking work"** and
+the app isn't set up yet, run these from this repo's root:
+
+```bash
+npm run setup          # one step: installs deps + makes the skills global (= npm install && install-skill)
+npm run review         # then start the app → http://127.0.0.1:5174
+```
+
+`npm run setup` is the same as running these two yourself:
+
+```bash
+npm install            # app dependencies (react, vite, prismjs, marked, @babel/standalone)
+npm run install-skill  # symlink the two skills into ~/.claude/skills/ so they work from ANY repo
+```
+
+- `npm install` is required to run the app (`npm run review` → http://127.0.0.1:5174).
+- `npm run install-skill` makes `work-log-v2` and `code-review-tool` **global**. This is
+  **required for the normal cross-project workflow** (importing diffs from / logging work for
+  *other* repos): the skills ship as *project-level* skills, so without this step Claude only
+  discovers them while running inside **this** repo. Flags: `--copy` (copy instead of symlink, if
+  the clone may move), `--force` (replace an existing skill of the same name).
+- After install, from any repo the user can say *"new task" / "start tracking" / "use WCC"* and
+  the `work-log-v2` / `code-review-tool` skills take over. Import a change with
+  `node bin/import.mjs --repo <path> --base main --head WORKTREE --id <slug> --title "..."`.
+
+---
+
 # Reviewer protocol — read this before participating
 
 You are the **reviewer** in a local, file-bridge code review. A human author is
