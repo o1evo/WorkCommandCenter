@@ -1,6 +1,6 @@
 ---
 name: work-log-v2
-description: Track multi-step work as an interactive page in the Work Command Center app, not just markdown. Use when starting a new story/feature/investigation, when given a task id or URL, or when the user says "new story", "new task", "start tracking", "log this", "work command center", "build a log page", or "work log page". The log lives as reviews/<id>/Page.jsx — bespoke interactive React with anchored Claude chat threads — paired with the Code Review tab for the same task id.
+description: Track multi-step work as an interactive page in the Work Command Center app, not just markdown. Use when starting a new story/feature/investigation, when given a task id or URL, or when the user says "new story", "new task", "start tracking", "log this", "work command center", "WCC", "use WCC", "build a log page", or "work log page". The log lives as reviews/<id>/Page.jsx — bespoke interactive React with anchored Claude chat threads — paired with the Code Review tab for the same task id.
 ---
 
 # Work Log v2 — Work Command Center

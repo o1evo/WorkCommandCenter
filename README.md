@@ -30,7 +30,7 @@ review never goes anywhere.
 git clone <this-repo> && cd CodeReviews
 npm install
 npm run review            # starts Vite + the file-bridge API on http://127.0.0.1:5174
-npm run install-skill     # OPTIONAL — see "Skills" below
+npm run install-skill     # make the skills global — needed to drive WCC from OTHER repos (see "Skills")
 ```
 
 Open the printed URL. The app hosts **multiple reviews at once** — pick one from

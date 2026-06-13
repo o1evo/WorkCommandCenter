@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Work Command Center — local, private work hub: interactive work-log page, file-bridge code review, and QA plan per task, with a Claude reviewer chat.",
   "scripts": {
+    "setup": "npm install && node bin/install-skill.mjs",
     "review": "vite",
     "import": "node bin/import.mjs",
     "install-skill": "node bin/install-skill.mjs"
