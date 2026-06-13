@@ -28,6 +28,18 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
   const activeAnn = hunk.annotations.find((a) => a.id === activeFinding);
   const litSet = new Set(activeAnn ? targetKeys(activeAnn) : []);
 
+  // Findings with a new-side `line` render INLINE at that diff row (where a
+  // GitHub review comment would sit). Everything else renders in the trailing
+  // block. A `line` that isn't in this hunk falls back to the block, so a finding
+  // is never silently dropped.
+  const presentNew = new Set(lines.filter((l) => l.newNo != null).map((l) => l.newNo));
+  const inlineByLine = {};
+  const blockAnns = [];
+  for (const a of hunk.annotations || []) {
+    if (Number.isInteger(a.line) && presentNew.has(a.line)) (inlineByLine[a.line] = inlineByLine[a.line] || []).push(a);
+    else blockAnns.push(a);
+  }
+
   // A thread with messages defaults open; the × collapses it (via collapsedLines).
   // An empty thread defaults closed; a gutter click opens it (via openLines).
   const flip = (set, key) => {
@@ -48,7 +60,7 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
   }
 
   return (
-    <div className="hunk">
+    <div className="hunk" id={`h-${hunk.id}`}>
       <div className="hunk-range">{hunk.range}</div>
 
       <table className="diff">
@@ -62,6 +74,7 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
             return (
               <React.Fragment key={i}>
                 <tr ref={(el) => { rowRefs.current[key] = el; }}
+                    id={hasMsgs ? `ln-${key}` : undefined}
                     className={`row row-${ln.kind} ${litSet.has(key) ? 'wcc-hl-line' : ''}`}>
                   <td className="ln ln-comment" title="comment on this line" onClick={() => toggleLine(key, hasMsgs)}>{ln.oldNo ?? ''}</td>
                   <td className="ln ln-comment" title="comment on this line" onClick={() => toggleLine(key, hasMsgs)}>{ln.newNo ?? ''}</td>
@@ -73,6 +86,15 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
                     )}
                   </td>
                 </tr>
+                {(inlineByLine[ln.newNo] || []).map((a) => (
+                  <tr key={a.id} className="annotation-row">
+                    <td colSpan={4}>
+                      <Annotation ann={a} inline active={activeFinding === a.id}
+                        messages={threads[a.id] || []} onSend={(t) => onSend(a.id, t)}
+                        onDelete={onDelete && ((mid) => onDelete(a.id, mid))} onToggle={() => toggleFinding(a)} />
+                    </td>
+                  </tr>
+                ))}
                 {open && (
                   <tr className="line-thread-row">
                     <td colSpan={4}>
@@ -99,7 +121,7 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
         </tbody>
       </table>
 
-      {hunk.annotations.map((a) => (
+      {blockAnns.map((a) => (
         <Annotation key={a.id} ann={a} active={activeFinding === a.id}
           messages={threads[a.id] || []} onSend={(t) => onSend(a.id, t)}
           onDelete={onDelete && ((mid) => onDelete(a.id, mid))} onToggle={() => toggleFinding(a)} />
@@ -113,10 +135,10 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
 
 // A finding plus the thread that follows it. Click the head to light up / clear
 // the lines it concerns.
-function Annotation({ ann, active, messages, onSend, onDelete, onToggle }) {
+function Annotation({ ann, active, messages, onSend, onDelete, onToggle, inline }) {
   const sev = (ann.severity || 'note').toLowerCase();
   return (
-    <div className={`annotation sev-${sev} ${active ? 'annotation-active' : ''}`}>
+    <div id={`f-${ann.id}`} className={`annotation sev-${sev} ${active ? 'annotation-active' : ''} ${inline ? 'annotation-inline' : ''}`}>
       <div className="annotation-head annotation-jump" onClick={onToggle}
            title={active ? 'clear the highlight' : 'highlight the lines this finding concerns'}>
         <span className={`sev-badge sev-${sev}`}>{ann.severity || 'note'}</span>

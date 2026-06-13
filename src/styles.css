@@ -31,7 +31,7 @@ code, pre, .code, .diff td.code, .review-meta code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-.app { max-width: 1100px; margin: 0 auto; padding: 20px 24px 80px; }
+.app { max-width: 1380px; margin: 0 auto; padding: 20px 24px 80px; }
 
 .app-header {
   display: flex; justify-content: space-between; align-items: flex-start;
@@ -407,3 +407,89 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
   0%   { box-shadow: inset 0 0 0 9999px rgba(88,166,255,0.45); }
   100% { box-shadow: inset 0 0 0 9999px rgba(88,166,255,0.20); }
 }
+
+/* ---- Code Review tab: findings/comments sidebar ---- */
+.review-layout { display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 22px; align-items: start; }
+.review-main { min-width: 0; }
+
+.review-sidebar {
+  position: sticky; top: 12px; align-self: start;
+  max-height: calc(100vh - 24px); overflow-y: auto;
+  border: 1px solid var(--border); border-radius: 8px; background: var(--panel);
+  padding: 8px; font-size: 12.5px;
+}
+.rs-section { padding: 4px 2px 10px; }
+.rs-section + .rs-section { border-top: 1px solid var(--border); margin-top: 6px; padding-top: 10px; }
+.rs-head { display: flex; align-items: center; justify-content: space-between; font-weight: 700; color: var(--text); padding: 2px 6px 6px; }
+.rs-sevline { display: flex; gap: 4px; }
+.rs-sevcount { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 9px; border: 1px solid currentColor; }
+.rs-pending { font-size: 10px; font-weight: 700; color: var(--medium); border: 1px solid var(--medium); border-radius: 9px; padding: 1px 6px; }
+
+.rs-filter { display: flex; gap: 5px; padding: 0 6px 8px; }
+.rs-filter button { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 12px; padding: 1px 9px; font-size: 11px; cursor: pointer; }
+.rs-filter button.active { color: var(--text); border-color: var(--link); }
+
+.rs-group { margin-bottom: 6px; }
+.rs-grouphead { font-size: 10px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); padding: 4px 6px 2px; }
+.rs-empty { color: var(--muted); padding: 2px 6px 6px; }
+
+.rs-item {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: none; border: none; border-radius: 5px; cursor: pointer;
+  text-align: left; color: var(--text); padding: 4px 6px; line-height: 1.35;
+}
+.rs-item:hover { background: var(--panel-2); }
+.rs-item:disabled, .rs-item.rs-nojump { cursor: default; opacity: .65; }
+.rs-item.rs-nojump:hover { background: none; }
+.rs-item-text { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-item-file { flex: 0 0 auto; color: var(--muted); font-size: 11px; max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rs-counts { flex: 0 0 auto; color: var(--muted); font-size: 11px; }
+.rs-pending-dot { color: var(--medium); }
+
+.rs-dot { flex: 0 0 auto; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.rs-item.sev-blocker { color: var(--blocker); }
+.rs-item.sev-high { color: var(--high); }
+.rs-item.sev-medium { color: var(--medium); }
+.rs-item.sev-low { color: var(--low); }
+.rs-item.sev-resolved { color: var(--resolved); }
+.rs-item.sev-note { color: var(--note); }
+/* keep finding label text readable; only the dot/badge carries the sev color */
+.rs-item .rs-item-text, .rs-item .rs-item-file, .rs-item .rs-counts { color: var(--text); }
+.rs-item .rs-item-file, .rs-item .rs-counts { color: var(--muted); }
+.rs-grouphead.sev-blocker { color: var(--blocker); }
+.rs-grouphead.sev-high { color: var(--high); }
+.rs-grouphead.sev-medium { color: var(--medium); }
+.rs-grouphead.sev-low { color: var(--low); }
+.rs-grouphead.sev-resolved { color: var(--resolved); }
+
+.rs-kind { flex: 0 0 auto; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 9px; border: 1px solid var(--border); color: var(--muted); }
+.rs-kind-finding { color: var(--link); border-color: var(--link); }
+.rs-kind-line { color: var(--low); border-color: var(--low); }
+.rs-kind-log { color: var(--note); }
+
+/* flash a jump target so it's easy to spot after scrolling */
+@keyframes jump-flash { 0% { box-shadow: 0 0 0 2px var(--link) inset; } 100% { box-shadow: 0 0 0 0 transparent inset; } }
+.jump-flash { animation: jump-flash 1.6s ease-out; }
+tr.jump-flash td { background: var(--add-gutter) !important; }
+
+/* wcc.CodeRef — a Log-page link that jumps to the matching Code Review hunk/finding. */
+.wcc-coderef { color: var(--link); cursor: pointer; text-decoration: none; font-family: ui-monospace, monospace; border-bottom: 1px dashed var(--link); }
+.wcc-coderef:hover { border-bottom-style: solid; }
+.wcc-coderef-missing { color: var(--muted, #8b949e); cursor: default; border: 0; }
+.wcc-coderef-tag { font-style: italic; font-size: .85em; opacity: .8; }
+
+@media (max-width: 900px) {
+  .review-layout { grid-template-columns: 1fr; }
+  .review-sidebar { position: static; max-height: none; }
+}
+
+/* sidebar toggle */
+.review-layout.sidebar-collapsed { grid-template-columns: 1fr; }
+.rs-collapse { float: right; background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 12px; padding: 1px 9px; font-size: 11px; cursor: pointer; margin: 0 2px 2px; }
+.rs-collapse:hover { color: var(--text); border-color: var(--link); }
+.rs-toggle { background: var(--panel); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; margin-bottom: 14px; }
+.rs-toggle:hover { border-color: var(--link); color: var(--link); }
+
+/* inline (line-anchored) findings — sit in the diff where a GH review comment would */
+.annotation-row td { padding: 0; background: var(--panel); }
+.annotation-row .annotation.annotation-inline { margin: 6px 10px 8px; border-left-width: 4px; }

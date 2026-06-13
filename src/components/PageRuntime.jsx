@@ -79,8 +79,62 @@ export default function PageRuntime({ source, wcc }) {
 
 // Builds the page API handed to every Page as the `wcc` prop. Rebuilt each
 // render from the latest polled data, so <wcc.Thread> always shows live messages.
-export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState }) {
+export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState, onNavigate }) {
   const threads = data.threads || {};
+  const hunks = data.hunks || [];
+
+  // New-side line span a hunk covers, parsed from its "@@ -a,b +c,d @@" range.
+  function newSpan(range) {
+    const m = /\+(\d+)(?:,(\d+))?/.exec(range || '');
+    if (!m) return null;
+    const start = +m[1];
+    const count = m[2] == null ? 1 : +m[2];
+    return [start, start + Math.max(count, 1) - 1];
+  }
+
+  // Resolve a `file`(+optional `line`) to the best Code Review scroll target.
+  // Preference: an annotation pinned to that exact line → that finding (`f-<id>`);
+  // else the hunk whose new-side span covers the line → that hunk (`h-<id>`);
+  // else the file's first hunk. Returns null when the file isn't in the diff at
+  // all (an honest "can't anchor — not in this PR's diff").
+  function resolveCodeTarget(file, line) {
+    const fileHunks = hunks.filter((h) => h.file === file);
+    if (!fileHunks.length) return null;
+    if (line != null) {
+      for (const h of fileHunks)
+        for (const a of h.annotations || [])
+          if (a.line === line && a.id) return { domId: `f-${a.id}`, inDiff: true };
+      for (const h of fileHunks) {
+        const sp = newSpan(h.range);
+        if (sp && line >= sp[0] && line <= sp[1]) return { domId: `h-${h.id}`, inDiff: true };
+      }
+    }
+    return { domId: `h-${fileHunks[0].id}`, inDiff: false };
+  }
+
+  // Switch to the Code Review tab and scroll to file:line. Returns true if the
+  // file is in the diff (so callers can render a non-link fallback otherwise).
+  function openCode(file, line) {
+    const t = resolveCodeTarget(file, line);
+    if (!t) return false;
+    if (onNavigate) onNavigate('review', t.domId);
+    return true;
+  }
+
+  // <wcc.CodeRef file="app/models/x.rb" line={50} /> — renders a clickable
+  // file:line that jumps to the matching Code Review hunk/finding. If the file
+  // isn't in the diff, renders plain text + a muted "(not in diff)" note rather
+  // than a dead link, so out-of-diff findings stay honest.
+  function CodeRef({ file, line, label, children }) {
+    if (!file) return null;
+    const text = children || label || (line != null ? `${file}:${line}` : file);
+    const t = resolveCodeTarget(file, line);
+    if (!t) return <span className="wcc-coderef wcc-coderef-missing" title="not in this PR's diff">{text} <span className="wcc-coderef-tag">(not in diff)</span></span>;
+    return (
+      <a className="wcc-coderef" href="#" title="open in Code Review"
+         onClick={(e) => { e.preventDefault(); openCode(file, line); }}>{text}</a>
+    );
+  }
 
   // <wcc.Thread target="log:my-section" title="…" /> — a self-contained chat
   // anchored to a section/idea the page chooses. Reuses the same file-bridge
@@ -106,10 +160,12 @@ export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState }
     id,
     data,
     review: data.review || {},
-    hunks: data.hunks || [],
+    hunks,
     threads,
     Thread: PageThread,
     Markdown, // <wcc.Markdown text="# full markdown\n- lists, tables, ```fences``` " />
+    CodeRef,        // <wcc.CodeRef file="app/x.rb" line={50} /> — link to the Code Review tab
+    openCode,       // wcc.openCode(file, line) → jump to Code Review; returns false if not in diff
     send: (target, text) => onSend(target, text),
     deleteMessage: (target, messageId) => onDelete(target, messageId),
     createAnchor: (anchor) => onAnchor(anchor), // used by the comment layer

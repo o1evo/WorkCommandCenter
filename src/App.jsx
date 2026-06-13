@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { listReviews, getReview, postMessage, deleteMessage, deleteThread, postAnchor, setAnchorState } from './api.js';
 import HunkView from './components/HunkView.jsx';
+import ReviewSidebar from './components/ReviewSidebar.jsx';
 import Thread from './components/Thread.jsx';
 import PageRuntime, { buildWcc } from './components/PageRuntime.jsx';
 import Markdown from './components/Markdown.jsx';
 import CopyButton from './components/CopyButton.jsx';
 
 const POLL_MS = 3000;
+const CURRENT_KEY = 'wcc.currentReview';
 
 export default function App() {
   const [reviews, setReviews] = useState([]);
@@ -14,17 +16,37 @@ export default function App() {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [view, setView] = useState(null); // null → default per task (Log if it has a page)
+  const [pendingJump, setPendingJump] = useState(null); // DOM id to scroll to after a tab switch
   const mtimeRef = useRef(null);
 
-  // Load the list of reviews once, pick the first by default.
+  // Cross-tab navigation handed to the Log page via wcc.onNavigate: switch tabs
+  // and (optionally) remember a DOM id for the target tab to scroll to once mounted.
+  function goToView(targetView, domId) {
+    setView(targetView || 'review');
+    if (domId) setPendingJump(domId);
+  }
+
+  // Load the list of reviews once. Restore the most-recently-selected task
+  // for this client (localStorage is per-browser), falling back to the first.
   useEffect(() => {
     listReviews()
       .then((list) => {
         setReviews(list);
-        if (list.length && !currentId) setCurrentId(list[0].id);
+        if (list.length && !currentId) {
+          let saved = null;
+          try { saved = localStorage.getItem(CURRENT_KEY); } catch {}
+          const restored = saved && list.some((r) => r.id === saved) ? saved : list[0].id;
+          setCurrentId(restored);
+        }
       })
       .catch((e) => setError(e.message));
   }, []);
+
+  // Switch tasks and remember the choice for this client.
+  function selectReview(id) {
+    setCurrentId(id);
+    try { localStorage.setItem(CURRENT_KEY, id); } catch {}
+  }
 
   // Poll the selected review; only swap state when the file actually changed.
   useEffect(() => {
@@ -116,7 +138,7 @@ export default function App() {
         </div>
         <div className="header-right">
           {reviews.length > 1 && (
-            <select value={currentId} onChange={(e) => setCurrentId(e.target.value)}>
+            <select value={currentId} onChange={(e) => selectReview(e.target.value)}>
               {reviews.map((r) => (
                 <option key={r.id} value={r.id}>{r.title}</option>
               ))}
@@ -162,6 +184,7 @@ export default function App() {
               onDelete: removeMessage,
               onAnchor: createAnchor,
               onAnchorState: changeAnchorState,
+              onNavigate: goToView,
             })}
           />
         ) : (
@@ -170,7 +193,8 @@ export default function App() {
       )}
 
       {activeView === 'review' && (
-        <ReviewView review={review} byFile={byFile} threads={threads} onSend={send} onDelete={removeMessage} onDeleteThread={removeThread} />
+        <ReviewView review={review} byFile={byFile} threads={threads} hunks={hunks} onSend={send} onDelete={removeMessage} onDeleteThread={removeThread}
+          jumpTarget={pendingJump} onJumped={() => setPendingJump(null)} />
       )}
 
       {activeView === 'qa' && <QaView id={currentId} qa={data._qa} />}
@@ -184,24 +208,63 @@ export default function App() {
   );
 }
 
-function ReviewView({ review, byFile, threads, onSend, onDelete, onDeleteThread }) {
-  return (
-    <>
-      <section className="general">
-        <h2>General discussion</h2>
-        <Thread messages={threads.general || []} onSend={(t) => onSend('general', t)}
-          onDelete={(mid) => onDelete('general', mid)} />
-      </section>
+function ReviewView({ review, byFile, threads, hunks, onSend, onDelete, onDeleteThread, jumpTarget, onJumped }) {
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try { return localStorage.getItem('wcc.reviewSidebar') !== 'closed'; } catch { return true; }
+  });
+  function toggleSidebar() {
+    setSidebarOpen((v) => {
+      const next = !v;
+      try { localStorage.setItem('wcc.reviewSidebar', next ? 'open' : 'closed'); } catch {}
+      return next;
+    });
+  }
 
-      {Object.entries(byFile).map(([file, fileHunks]) => (
-        <section key={file} className="file">
-          <h2 className="file-name">{file}</h2>
-          {fileHunks.map((h) => (
-            <HunkView key={h.id} hunk={h} threads={threads} onSend={onSend} onDelete={onDelete} onDeleteThread={onDeleteThread} />
-          ))}
+  // Scroll a finding/hunk/line into view from the sidebar and flash it briefly.
+  function jumpTo(domId) {
+    const el = document.getElementById(domId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('jump-flash');
+    setTimeout(() => el.classList.remove('jump-flash'), 1600);
+  }
+
+  // When the Log page jumps here (wcc.openCode), the hunks have just mounted —
+  // wait a frame so the target element exists, then scroll to it and clear the request.
+  useEffect(() => {
+    if (!jumpTarget) return;
+    const raf = requestAnimationFrame(() => {
+      jumpTo(jumpTarget);
+      onJumped && onJumped();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [jumpTarget]);
+
+  return (
+    <div className={`review-layout ${sidebarOpen ? '' : 'sidebar-collapsed'}`}>
+      {sidebarOpen && <ReviewSidebar hunks={hunks} threads={threads} onJump={jumpTo} onClose={toggleSidebar} />}
+      <div className="review-main">
+        {!sidebarOpen && (
+          <button className="rs-toggle" onClick={toggleSidebar} title="show findings & comments index">
+            ☰ Findings &amp; comments
+          </button>
+        )}
+        <section className="general">
+          <h2>General discussion</h2>
+          <Thread messages={threads.general || []} onSend={(t) => onSend('general', t)}
+            onDelete={(mid) => onDelete('general', mid)} />
         </section>
-      ))}
-    </>
+
+        {Object.entries(byFile).map(([file, fileHunks]) => (
+          <section key={file} className="file">
+            <h2 className="file-name">{file}</h2>
+            {fileHunks.map((h) => (
+              <HunkView key={h.id} hunk={h} threads={threads} onSend={onSend} onDelete={onDelete} onDeleteThread={onDeleteThread} />
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
   );
 }
 
