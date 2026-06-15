@@ -13,8 +13,15 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { ensureAnnotationIds, annotationIds } from './annotations.mjs';
+import { liveDiff } from './livediff.mjs';
 
 export function createApi(reviewsDir) {
+  // Per-review change-token cache for the live diff. Maps id -> { hash, mtime }.
+  // We re-run `git diff` on every poll (cheap, single-user, local), but only
+  // mint a NEW poll token (mtime) when the diff text actually changed — so the
+  // client's mtime-gated re-render fires on real code changes and skips the
+  // no-op polls. In-memory only; a server restart just causes one extra render.
+  const liveCache = new Map();
   function reviewPath(id) {
     // id is a slug; reject anything with path separators to be safe.
     if (!/^[a-z0-9-]+$/i.test(id)) return null;
@@ -35,12 +42,49 @@ export function createApi(reviewsDir) {
     return join(reviewsDir, id, 'qa-plan.md');
   }
 
-  function load(id) {
+  function load(id, { live = false } = {}) {
     const p = reviewPath(id);
     if (!p || !existsSync(p)) return null;
     const data = JSON.parse(readFileSync(p, 'utf8'));
-    ensureAnnotationIds(data); // deterministic ids so threads can key per finding
     let mtime = statSync(p).mtimeMs;
+
+    // Stream the diff live from the repo instead of serving the hunks baked
+    // into thread.json. The persisted hunks stay the durable annotation store;
+    // here we overlay the CURRENT `git diff` and re-attach annotations by hunk
+    // id — the same contract as `import.mjs --refresh`, now automatic on every
+    // poll. (--diff-file imports have no repo, so they keep the snapshot.)
+    if (live && data.review && data.review.repo) {
+      try {
+        const fresh = liveDiff(data.review);
+        if (fresh) {
+          const prevAnn = {};
+          for (const h of data.hunks || []) prevAnn[h.id] = h.annotations || [];
+          data.hunks = fresh.hunks.map((h) => ({
+            id: h.id,
+            file: h.file,
+            range: h.range,
+            diff: h.diff,
+            annotations: prevAnn[h.id] || [], // carry findings forward by hunk id
+          }));
+          // Bump the poll token only when the diff text actually changed.
+          const cached = liveCache.get(id);
+          let liveMtime;
+          if (cached && cached.hash === fresh.hash) {
+            liveMtime = cached.mtime;
+          } else {
+            liveMtime = Date.now();
+            liveCache.set(id, { hash: fresh.hash, mtime: liveMtime });
+          }
+          if (liveMtime > mtime) mtime = liveMtime;
+        }
+      } catch (err) {
+        // Repo moved / bad ref / git missing — fall back to the persisted
+        // snapshot rather than 500, and tell the client the diff may be stale.
+        data._liveError = String(err && err.message ? err.message : err);
+      }
+    }
+
+    ensureAnnotationIds(data); // deterministic ids so threads can key per finding
 
     // Attach the bespoke page source so a single poll re-renders on either a
     // thread.json change OR a Claude edit to Page.jsx. _mtime is the max of the
@@ -74,6 +118,7 @@ export function createApi(reviewsDir) {
     delete copy._mtime;
     delete copy._page;
     delete copy._qa;
+    delete copy._liveError;
     // Atomic write: a concurrent reader (the 3s poll, or a reviewer Claude
     // session editing the same file) sees either the old or the new complete
     // file, never a torn one. rename(2) is atomic within a filesystem.
@@ -120,7 +165,7 @@ export function createApi(reviewsDir) {
       // GET /api/review/:id
       let m = path.match(/^\/api\/review\/([^/]+)$/);
       if (m && req.method === 'GET') {
-        const data = load(m[1]);
+        const data = load(m[1], { live: true });
         if (!data) return json(res, 404, { error: 'review not found' });
         return json(res, 200, data);
       }
@@ -129,7 +174,7 @@ export function createApi(reviewsDir) {
       m = path.match(/^\/api\/review\/([^/]+)\/message$/);
       if (m && req.method === 'POST') {
         const id = m[1];
-        const data = load(id);
+        const data = load(id, { live: true }); // resolve hunk targets against current diff
         if (!data) return json(res, 404, { error: 'review not found' });
         const body = await readBody(req);
         const target = body.target || 'general';
@@ -258,7 +303,7 @@ export function createApi(reviewsDir) {
       m = path.match(/^\/api\/review\/([^/]+)\/annotations$/);
       if (m && req.method === 'POST') {
         const id = m[1];
-        const data = load(id);
+        const data = load(id, { live: true }); // attach findings to current-diff hunks
         if (!data) return json(res, 404, { error: 'review not found' });
         const body = await readBody(req);
         const hunk = data.hunks.find((h) => h.id === body.target);

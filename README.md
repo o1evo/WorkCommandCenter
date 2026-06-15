@@ -30,13 +30,13 @@ review never goes anywhere.
 git clone <this-repo> && cd CodeReviews
 npm install
 npm run setup             # one step: install deps + make the skills global + offer a hosts alias
-npm run review            # starts Vite + the file-bridge API on http://127.0.0.1:8473
+npm run review            # starts Vite + the file-bridge API on http://127.0.0.1:7777
 ```
 
-`npm run setup` also asks whether to add a `127.0.0.1 wcc.test` line to `/etc/hosts`
-(sudo, you can decline) so you can open WCC at **http://wcc.test:8473** instead of the
-loopback IP. The port and alias are configurable: set `WCC_PORT` (default `8473`) and/or
-`WCC_HOST` (default `wcc.test`) — both `npm run setup` and `npm run review` read them.
+`npm run setup` also asks whether to add a `127.0.0.1 wcc` line to `/etc/hosts`
+(sudo, you can decline) so you can open WCC at **http://wcc:7777** instead of the
+loopback IP. The port and alias are configurable: set `WCC_PORT` (default `7777`) and/or
+`WCC_HOST` (default `wcc`) — both `npm run setup` and `npm run review` read them.
 `npm run install-skill` alone (no deps, no alias) still works if you only want the skills global.
 
 Open the printed URL. The app hosts **multiple reviews at once** — pick one from
@@ -44,6 +44,32 @@ the header switcher dropdown (shown when more than one exists); the 3s poll is
 scoped to the selected id.
 
 **Requirements:** Node 18+ (the scripts use `node:` built-ins and `import.meta`).
+
+### Server lifecycle via the `wcc` MCP (optional)
+
+Instead of keeping a terminal on `npm run review`, you can let a Claude session
+manage the server through a tiny **zero-dependency MCP controller**
+([bin/wcc-mcp.mjs](bin/wcc-mcp.mjs)). Register it once (user scope → available in
+every project):
+
+```bash
+claude mcp add --scope user wcc -- node /absolute/path/to/CodeReviews/bin/wcc-mcp.mjs
+```
+
+Claude Code spawns the controller when a session starts; it **autostarts WCC**
+(unless `WCC_AUTOSTART=0`) and runs it **detached**, so the server outlives the
+MCP and the session. Tools:
+
+- `wcc_status` — running? URL + listening PIDs + log path.
+- `wcc_start` / `wcc_stop` — bring it up (no-op if already up) / shut it down.
+- **`wcc_restart`** — reload after editing server-side code (`server/*.mjs`,
+  `vite.config.mjs`), which Vite only reads at startup. (Client `src/` changes
+  hot-reload — no restart needed.)
+- `wcc_logs` — tail the server log.
+
+Runtime state (pidfile + log) lives in the gitignored `.wcc/`. The controller is
+only a *remote*: it acts while a Claude session exists, so it doesn't replace a
+`launchd`/login daemon if you want WCC up before any session (or across reboots).
 
 ### Skills (the reviewer/author automation)
 
@@ -75,6 +101,16 @@ UI  ──POST /message──▶  thread.json + Page.jsx + qa-plan.md  ◀──
 - **Backend** ([server/api.mjs](server/api.mjs)): stateless. Every request does a
   fresh read → mutate → **atomic** write (temp file + `rename`, so a concurrent
   poll/reviewer never sees a half-written file). Localhost only, filesystem only.
+- **Live diff streaming** ([server/livediff.mjs](server/livediff.mjs)): for a
+  review imported from a repo, the backend re-runs `git diff` (using the stored
+  `repo`/`base`/`head`) on every poll and overlays the **current** hunks, re-attaching
+  annotations by hunk id — the persisted `hunks` are just the durable annotation
+  store. So the Code Review tab reflects code edits within ~3s with **no manual
+  re-import**. The re-diff is gated by a hash of the diff text, so it costs one
+  fast `git` spawn per poll but only bumps `_mtime` (triggering a re-render) when
+  the diff actually changed. On git failure it falls back to the persisted hunks
+  and reports `_liveError`. (`--diff`-file imports have no repo, so they stay a
+  static snapshot.)
 - **Reviewer bridge:** a Claude session reads the JSON, answers pending author
   questions (in *any* tab's threads), and saves — the UI shows the reply on its
   next poll. No push/websockets (a Claude reviewer can't be pushed to); the app
@@ -181,7 +217,7 @@ node bin/import.mjs --diff change.diff --title "My change"
 node bin/import.mjs --repo ... --base ... --head ... --title "..." \
   --id my-id --seed reviews/seeds/my-seed.json
 
-# Re-diff an existing review in place after more code lands — keeps the chat:
+# Re-persist the snapshot or change the stored base/head/title:
 node bin/import.mjs --id my-id --refresh
 ```
 
@@ -189,11 +225,12 @@ node bin/import.mjs --id my-id --refresh
   often staged/unstaged, not yet committed to HEAD.
 - `--seed <file>` attaches curated findings as annotations (targets hunks by
   `{file, contains?}`) and optional seed threads.
-- **`--refresh` is the safe re-sync:** it re-runs the diff for an existing `--id`
-  (backfilling repo/base/head/title) and rewrites the hunks **while preserving the
-  conversation, annotations with their resolved/deleted states, and Log-page
-  comment anchors.** Run it after each round so the Code Review tab shows current
-  code without losing discussion.
+- **You usually don't need `--refresh` anymore:** the backend streams the diff
+  live on every poll (see "Live diff streaming" above), so after-the-round code
+  edits show up automatically. `--refresh` remains for re-persisting the snapshot
+  or changing the stored `repo`/`base`/`head`/`title` — it re-runs the diff for an
+  existing `--id` while preserving the conversation, annotations with their
+  resolved/deleted states, and Log-page comment anchors.
 - **`--force` is destructive:** re-import overwrites `thread.json` from the seed,
   wiping the live conversation. Only use it to start a fresh round.
 
@@ -277,7 +314,7 @@ lowercase slug):
 # Review uncommitted work in some repo:
 node bin/import.mjs --repo /path/to/repo --base main --head WORKTREE \
   --id my-change --title "My change"
-npm run review        # open http://127.0.0.1:8473 (or http://wcc.test:8473) and pick "my-change"
+npm run review        # open http://127.0.0.1:7777 (or http://wcc:7777) and pick "my-change"
 ```
 
 To seed curated findings as annotations, write a seed JSON (shape in

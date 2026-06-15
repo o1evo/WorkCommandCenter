@@ -8,8 +8,8 @@
 // only ever applied after you say yes; otherwise we print the manual command.
 //
 // Env knobs (shared with vite.config.mjs):
-//   WCC_PORT        default 8473   — the port WCC listens on
-//   WCC_HOST        default wcc.test — the alias to map to 127.0.0.1
+//   WCC_PORT        default 7777   — the port WCC listens on
+//   WCC_HOST        default wcc — the alias to map to 127.0.0.1
 //   WCC_HOSTS_FILE  default /etc/hosts (or the Windows hosts path) — overridable for testing
 //   WCC_SKIP_SKILL_INSTALL=1        — skip step 1 (just (re)configure the alias)
 // Extra args (e.g. --copy, --force) are passed through to install-skill.mjs.
@@ -21,8 +21,8 @@ import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = Number(process.env.WCC_PORT) || 8473;
-const HOST_ALIAS = process.env.WCC_HOST || 'wcc.test';
+const PORT = Number(process.env.WCC_PORT) || 7777;
+const HOST_ALIAS = process.env.WCC_HOST || 'wcc';
 const IS_WIN = process.platform === 'win32';
 const HOSTS_FILE = process.env.WCC_HOSTS_FILE
   || (IS_WIN ? 'C:\\Windows\\System32\\drivers\\etc\\hosts' : '/etc/hosts');
@@ -41,9 +41,11 @@ async function offerHostsAlias() {
   let hosts = '';
   try { hosts = readFileSync(HOSTS_FILE, 'utf8'); } catch { /* unreadable — fall through to manual */ }
 
-  // Already mapped? (any line that maps a loopback IP to the alias hostname)
+  // Already mapped? Match the alias as a whole hosts field (preceded by whitespace,
+  // followed by whitespace or EOL) so a bare alias like `wcc` is NOT considered present
+  // just because `wcc.test` is — the trailing `(?![\w.-])` rules out `wcc.<anything>`.
   const aliasWord = HOST_ALIAS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  if (new RegExp(`^[^#\\n]*\\b${aliasWord}\\b`, 'm').test(hosts)) {
+  if (new RegExp(`^[^#\\n]*\\s${aliasWord}(?![\\w.-])`, 'm').test(hosts)) {
     console.log(`\n= ${HOST_ALIAS} already maps in ${HOSTS_FILE} — open ${URL}`);
     return;
   }
