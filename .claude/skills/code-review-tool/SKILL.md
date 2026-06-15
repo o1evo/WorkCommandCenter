@@ -64,10 +64,20 @@ After writing, the open page shows the reply on its next poll — no restart, no
 
 ## Start / open the app
 
-```bash
-npm run review   # from the repo root → Vite dev on http://127.0.0.1:8473 (or http://wcc.test:8473; set WCC_PORT to change)
-```
-Then open the review id shown in the UI. If it's already running, just open the URL.
+Preferred — the **`wcc` MCP controller** manages the server lifecycle (registered in
+user scope; see `bin/wcc-mcp.mjs`). It **autostarts WCC when a Claude session begins** and
+runs it detached, so the server outlives the session. Use the MCP tools instead of a raw
+`npm run review`:
+- `wcc_status` — is it up? URL + listening PIDs.
+- `wcc_start` / `wcc_stop` — bring it up (no-op if already running) / shut it down.
+- **`wcc_restart`** — **run this after editing server-side code** (`server/*.mjs`,
+  `vite.config.mjs`); Vite loads those once at startup, so a restart is required to pick up
+  the change. (Client/`src` changes hot-reload — no restart needed.)
+- `wcc_logs` — tail the server log (`.wcc/server.log`).
+
+Manual fallback (no MCP): `npm run review` from the repo root → Vite dev on
+http://127.0.0.1:7777 (or http://wcc.test:7777; set `WCC_PORT` to change). Then open the
+review id shown in the UI. If it's already running, just open the URL.
 
 ## Import a diff (first time) / refresh it (each round)
 
@@ -80,28 +90,35 @@ node bin/import.mjs --repo <repo-path> --base <ref> --head <ref> \
   This is common — branch work is often staged/unstaged, not yet on HEAD.
 - `--seed <file>` attaches curated findings as annotations (and optional seed threads).
 
-**After each round of code changes, re-sync the diff with `--refresh`:**
-```bash
-node bin/import.mjs --id <review-id> --refresh
-```
-- Re-runs the diff and writes the new hunks, but **preserves the live state**: annotations
-  (re-attached by hunk id, so resolved/deleted findings + their states carry over), all
-  chat threads, and Log-page comment anchors. Repo/base/head/title default to the existing
-  review, so the `--id … --refresh` form is enough.
-- This is THE fix for "the Code Review tab shows stale code after a round." Use it whenever
-  the branch changes; you don't lose the conversation.
-- Caveat: re-attachment is by hunk id (`<file>#<index>`) — stable while a file's hunk
-  structure is unchanged. If a file splits into a different number of hunks, some
-  finding/line threads may orphan (still in the file, just not rendered).
-- **`--force`** is the destructive overwrite (regenerates from the seed, wiping threads) —
+**The diff streams live from the repo — no manual refresh after a code round.**
+The server re-runs `git diff` (using the review's stored `repo`/`base`/`head`) on every
+~3s poll and overlays the current hunks, re-attaching annotations by hunk id — the same
+contract `--refresh` had, now automatic. Edit code, save, and the Code Review tab reflects
+it within one poll. You do **not** need to re-run `import.mjs` after each round.
+- Annotations/threads/Log-page anchors are preserved verbatim across live re-diffs.
+  Findings re-attach by hunk id (`<file>#<index>`), stable while a file's hunk structure is
+  unchanged; if a file splits into a different number of hunks, some finding/line threads
+  may orphan (still in the file, just not rendered).
+- The poll re-render only fires when the diff text actually changed (server hashes it), so
+  the live re-diff costs one fast `git` spawn per poll and never a spurious re-render.
+- If the repo moves or the ref goes bad, the server falls back to the last persisted hunks
+  and sets `_liveError` rather than failing the load.
+- `--diff <file>` imports have no repo to stream from, so they stay a static snapshot — use
+  `--refresh`/re-import for those.
+
+`--refresh` and `--force` still exist for the cases live streaming doesn't cover:
+- **`--refresh`** — re-persist the snapshot or change the stored `base`/`head`/`title`
+  (`node bin/import.mjs --id <review-id> --refresh [--base … --head …]`).
+- **`--force`** — destructive overwrite that regenerates from the seed (wipes threads);
   only for starting a completely fresh round.
 
 ## Findings / severity
 
 Annotations carry `{ tag, severity, note }`. The UI styles severities
 **`blocker` / `high` / `medium` / `low`**; anything else (e.g. `resolved`) renders but
-uncolored. When a finding is fixed, set its `severity` to `resolved` and rewrite the note,
-then `--refresh` so the hunk shows the corrected code (the resolved state carries over).
+uncolored. When a finding is fixed, set its `severity` to `resolved` and rewrite the note;
+the live diff shows the corrected code automatically on the next poll (the resolved state
+carries over by hunk id).
 
 ## Details
 
