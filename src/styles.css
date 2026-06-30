@@ -102,6 +102,34 @@ code, pre, .code, .diff td.code, .review-meta code {
   border-top: 1px solid var(--border); padding: 7px 12px; font-size: 12px; color: var(--muted);
 }
 .cmdk-manage { background: none; border: none; color: var(--link); cursor: pointer; font: inherit; font-size: 12px; }
+.cmdk-tags { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.cmdk-tag {
+  background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 9px;
+  padding: 2px 9px; cursor: pointer; font: inherit; font-size: 11px;
+}
+.cmdk-tag:hover { color: var(--text); border-color: var(--muted); }
+.cmdk-tag.on { background: var(--link); border-color: var(--link); color: #fff; }
+.cmdk-tag-chip { flex: 0 0 auto; font-size: 10px; color: var(--muted); border: 1px solid var(--border); border-radius: 9px; padding: 1px 6px; }
+
+/* ── in-page find bar (⌘F) ─────────────────────────────────────────────── */
+.findbar {
+  position: fixed; top: 12px; right: 16px; z-index: 120;
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 8px 30px rgba(0,0,0,.5);
+}
+.findbar-input {
+  width: 200px; background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px; padding: 5px 8px; font: inherit; font-size: 13px;
+}
+.findbar-input:focus { outline: none; border-color: var(--link); }
+.findbar-input.miss { border-color: var(--blocker, #f85149); }
+.findbar-status { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.findbar-btn {
+  background: none; border: 1px solid transparent; color: var(--muted);
+  border-radius: 6px; width: 26px; height: 26px; cursor: pointer; font-size: 13px; line-height: 1;
+}
+.findbar-btn:hover { color: var(--text); border-color: var(--border); }
 
 /* ── manage-tasks modal ────────────────────────────────────────────────── */
 .tm-backdrop {
@@ -138,6 +166,48 @@ code, pre, .code, .diff td.code, .review-meta code {
 .tm-hide { flex: 0 0 auto; width: 26px; background: none; border: 1px solid transparent; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 12px; }
 .tm-hide:hover { color: var(--text); border-color: var(--border); }
 .tm-foot { border-top: 1px solid var(--border); padding: 8px 16px; font-size: 11px; color: var(--muted); }
+.tm-toggle.on { color: var(--link); border-color: var(--link); }
+.tm-item { border-radius: 7px; }
+.tm-item.dragging { opacity: .45; }
+.tm-drag { flex: 0 0 auto; cursor: grab; color: var(--muted); font-size: 14px; user-select: none; padding: 0 2px; }
+.tm-drag:active { cursor: grabbing; }
+/* per-page assigned tags (coloured from the catalog, via inline background) */
+.tm-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 2px 6px 6px 34px; }
+.tm-tag {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #fff;
+  border: none; border-radius: 9px; padding: 2px 5px 2px 9px;
+}
+.tm-tag-x { background: none; border: none; color: rgba(255,255,255,.7); cursor: pointer; font-size: 10px; padding: 0 2px; line-height: 1; }
+.tm-tag-x:hover { color: #fff; }
+.tm-tagpick { position: relative; display: inline-flex; }
+.tm-tagpick-btn { background: var(--bg); color: var(--muted); border: 1px dashed var(--border); border-radius: 9px; padding: 2px 9px; font: inherit; font-size: 11px; cursor: pointer; }
+.tm-tagpick-btn:hover { color: var(--text); border-color: var(--muted); }
+.tm-tagmenu {
+  position: absolute; top: 100%; left: 0; z-index: 10; margin-top: 4px; min-width: 150px;
+  display: flex; flex-direction: column; gap: 2px; padding: 4px;
+  background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+.tm-tagmenu-item { display: flex; align-items: center; gap: 7px; background: none; border: none; color: var(--text); border-radius: 5px; padding: 4px 8px; cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
+.tm-tagmenu-item:hover { background: var(--panel-2); }
+.tm-tagmenu-empty { color: var(--muted); font-size: 11px; padding: 4px 8px; }
+.tm-tagdot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
+
+/* tag catalog bar + editor */
+.tm-tagbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.tm-catchip { display: inline-flex; align-items: center; gap: 5px; color: #fff; font-size: 11px; border-radius: 9px; padding: 2px 5px 2px 10px; cursor: pointer; }
+.tm-catchip-x { background: none; border: none; color: rgba(255,255,255,.7); cursor: pointer; font-size: 10px; padding: 0 2px; line-height: 1; }
+.tm-catchip-x:hover { color: #fff; }
+.tm-tagnew { width: 24px; height: 22px; background: var(--bg); color: var(--muted); border: 1px dashed var(--border); border-radius: 9px; cursor: pointer; font-size: 14px; line-height: 1; }
+.tm-tagnew:hover { color: var(--text); border-color: var(--muted); }
+.tm-tagedit { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); background: var(--panel-2); }
+.tm-tagedit-name { background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 4px 8px; font: inherit; font-size: 12px; }
+.tm-tagedit-name:focus { outline: none; border-color: var(--link); }
+.tm-swatches { display: flex; gap: 5px; }
+.tm-swatch { width: 18px; height: 18px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.tm-swatch.on { border-color: var(--text); }
+.tm-tagedit-save { background: var(--link); color: #fff; border: none; border-radius: 6px; padding: 4px 12px; cursor: pointer; font: inherit; font-size: 12px; }
+.tm-tagedit-cancel { background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit; font-size: 12px; }
+.tm-tagedit-cancel:hover { color: var(--text); }
 
 
 h2 { font-size: 15px; margin: 24px 0 10px; }
@@ -359,13 +429,14 @@ h2 { font-size: 15px; margin: 24px 0 10px; }
 
 .wcc-comments { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 
+/* pointer-events: none so the highlight never blocks selecting/copying the text
+   underneath it — clicks to open the thread are hit-tested in CommentLayer instead. */
 .wcc-hl {
-  position: absolute; pointer-events: auto; cursor: pointer;
+  position: absolute; pointer-events: none;
   background: rgba(210, 153, 34, 0.22);
   border-bottom: 2px solid var(--medium);
   border-radius: 2px;
 }
-.wcc-hl:hover { background: rgba(210, 153, 34, 0.34); }
 .wcc-hl.active { background: rgba(210, 153, 34, 0.40); }
 .wcc-hl.resolved {
   background: rgba(46, 160, 67, 0.12);

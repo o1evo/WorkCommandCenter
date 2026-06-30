@@ -17,6 +17,34 @@ export async function setPageMeta(id, patch) {
   return r.json();
 }
 
+// The workspace-wide tag catalog: [{ name, color }].
+export async function listTags() {
+  const r = await fetch('/api/tags');
+  if (!r.ok) throw new Error('failed to list tags');
+  return r.json();
+}
+
+// Create (original null) or rename/recolor (original = existing name) a catalog tag.
+export async function saveTag({ original = null, name, color }) {
+  const r = await fetch('/api/tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op: 'upsert', original, name, color }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to save tag');
+  return r.json();
+}
+
+export async function deleteTag(name) {
+  const r = await fetch('/api/tags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op: 'delete', name }),
+  });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'failed to delete tag');
+  return r.json();
+}
+
 export async function getReview(id) {
   const r = await fetch(`/api/review/${encodeURIComponent(id)}`);
   if (r.status === 404) return null;

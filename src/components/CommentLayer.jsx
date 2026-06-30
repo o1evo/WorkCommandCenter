@@ -70,6 +70,32 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
     return () => document.removeEventListener('mouseup', onMouseUp);
   }, [pageRef]);
 
+  // Open a thread by clicking its highlight. The highlight overlay is now
+  // pointer-events:none (so it never blocks selecting/copying the text under it),
+  // so we hit-test a plain click against the measured rects instead. A drag that
+  // leaves a selection is NOT a click-to-open — that's the user copying text.
+  useEffect(() => {
+    function onClick(e) {
+      if (e.target.closest && e.target.closest('[data-wcc-ui]')) return; // our own UI
+      const root = pageRef.current;
+      if (!root) return;
+      const sel = window.getSelection();
+      if (sel && !sel.isCollapsed && sel.toString().trim()) return; // a real selection — leave it for copy
+      const cr = root.getBoundingClientRect();
+      const x = e.clientX - cr.left, y = e.clientY - cr.top;
+      for (const [key, rects] of Object.entries(positions)) {
+        for (const r of rects) {
+          if (x >= r.left && x <= r.left + r.width && y >= r.top && y <= r.top + r.height) {
+            setOpenKey(key);
+            return;
+          }
+        }
+      }
+    }
+    document.addEventListener('click', onClick);
+    return () => document.removeEventListener('click', onClick);
+  }, [positions, pageRef]);
+
   // Close the popover (or discard an untyped draft) on outside click / Escape.
   useEffect(() => {
     if (!openKey && !draft) return;
@@ -121,8 +147,6 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
             key={`${key}-${i}`}
             className={cls}
             style={{ top: r.top, left: r.left, width: r.width, height: r.height }}
-            onClick={() => setOpenKey(key)}
-            title={a.state === 'resolved' ? 'resolved comment' : 'comment'}
           />
         ));
       })}

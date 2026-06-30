@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { listReviews, getReview, postMessage, deleteMessage, deleteThread, postAnchor, setAnchorState, deleteAnchor, setPageMeta } from './api.js';
+import { listReviews, getReview, postMessage, deleteMessage, deleteThread, postAnchor, setAnchorState, deleteAnchor, setPageMeta, listTags, saveTag, deleteTag } from './api.js';
 import HunkView from './components/HunkView.jsx';
 import CommandPalette from './components/CommandPalette.jsx';
 import TasksManager from './components/TasksManager.jsx';
+import FindBar from './components/FindBar.jsx';
 import ReviewSidebar from './components/ReviewSidebar.jsx';
 import Thread from './components/Thread.jsx';
 import PageRuntime, { buildWcc } from './components/PageRuntime.jsx';
@@ -18,6 +19,7 @@ const CURRENT_KEY = 'wcc.currentReview';
 
 export default function App() {
   const [reviews, setReviews] = useState([]);
+  const [tags, setTags] = useState([]); // workspace-wide tag catalog [{ name, color }]
   const [currentId, setCurrentId] = useState(null);
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -25,6 +27,7 @@ export default function App() {
   const [pendingJump, setPendingJump] = useState(null); // DOM id to scroll to after a tab switch
   const [paletteOpen, setPaletteOpen] = useState(false); // ⌘K task switcher
   const [manageOpen, setManageOpen] = useState(false); // "manage tasks" modal
+  const [findOpen, setFindOpen] = useState(false); // ⌘F in-page find bar
   const [theme, setTheme] = useState(readSavedTheme); // color theme (chrome + pages)
   const mtimeRef = useRef(null);
 
@@ -35,12 +38,36 @@ export default function App() {
     if (domId) setPendingJump(domId);
   }
 
-  // ⌘K / Ctrl+K toggles the task-switcher palette from anywhere.
+  // ⌘K / Ctrl+K toggles the task-switcher palette from anywhere. F5 hard-reloads
+  // the whole app — inside the VS Code webview the iframe swallows the default
+  // browser reload, so we reload explicitly to recover from a wedged view.
   useEffect(() => {
     function onKey(e) {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setPaletteOpen((o) => !o);
+      } else if (e.key === 'F5' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        window.location.reload();
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        // ⌘F: the editor's native find can't reach into our iframe, so open the
+        // in-page find bar instead.
+        e.preventDefault();
+        setFindOpen(true);
+      } else if ((e.metaKey || e.ctrlKey) && (e.key === 'c' || e.key === 'C')) {
+        // Copy the current text selection. Inside the VS Code webview iframe the
+        // default ⌘C/Ctrl+C doesn't reliably reach the clipboard, so when there's
+        // a real selection (and we're not in an editable field, which handles its
+        // own copy) we write it ourselves. No selection → leave the default alone.
+        const el = document.activeElement;
+        const editable = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
+        if (editable) return;
+        const text = (window.getSelection()?.toString()) || '';
+        if (!text) return;
+        if (navigator.clipboard && window.isSecureContext) {
+          e.preventDefault();
+          navigator.clipboard.writeText(text).catch(() => { /* fall through to default on a later attempt */ });
+        }
       }
     }
     document.addEventListener('keydown', onKey);
@@ -68,6 +95,7 @@ export default function App() {
         }
       })
       .catch((e) => setError(e.message));
+    listTags().then(setTags).catch(() => { /* catalog optional */ });
   }, []);
 
   // Switch tasks and remember the choice for this client.
@@ -79,6 +107,22 @@ export default function App() {
   async function updatePageMeta(id, p) {
     await setPageMeta(id, p);
     await refreshReviews();
+  }
+  // Persist a manual ordering for a set of pages (drag-to-reorder in the manager),
+  // then refresh once rather than per-row.
+  async function reorderPages(items) {
+    await Promise.all(items.map(({ id, order }) => setPageMeta(id, { order })));
+    await refreshReviews();
+  }
+  // Tag catalog mutations. A rename/delete cascades to page tags server-side, so we
+  // refresh the reviews too. Errors (e.g. duplicate name) surface in the banner.
+  async function upsertTag(spec) {
+    try { setTags(await saveTag(spec)); await refreshReviews(); }
+    catch (e) { setError(e.message); }
+  }
+  async function removeTag(name) {
+    try { setTags(await deleteTag(name)); await refreshReviews(); }
+    catch (e) { setError(e.message); }
   }
 
   function selectReview(id) {
@@ -258,13 +302,15 @@ export default function App() {
         protocol in <code>CLAUDE.md</code>
       </footer>
 
+      {findOpen && <FindBar onClose={() => setFindOpen(false)} />}
       {paletteOpen && (
-        <CommandPalette reviews={reviews} currentId={currentId} onSelect={selectReview}
+        <CommandPalette reviews={reviews} tags={tags} currentId={currentId} onSelect={selectReview}
           onClose={() => setPaletteOpen(false)} onManage={() => setManageOpen(true)} />
       )}
       {manageOpen && (
-        <TasksManager reviews={reviews} currentId={currentId} onSelect={selectReview}
-          onMeta={updatePageMeta} onClose={() => setManageOpen(false)} />
+        <TasksManager reviews={reviews} tags={tags} currentId={currentId} onSelect={selectReview}
+          onMeta={updatePageMeta} onReorder={reorderPages} onUpsertTag={upsertTag} onRemoveTag={removeTag}
+          onClose={() => setManageOpen(false)} />
       )}
     </div>
   );

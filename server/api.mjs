@@ -132,16 +132,26 @@ export function createApi(workDir) {
   // a single WCC-owned, gitignored file — NOT in thread.json (which is the proprietary
   // review data). Keyed by review id. Absent file → no metadata, everything default.
   const metaPath = join(workDir, '..', '.wcc', 'pages.json');
-  const META_FIELDS = ['name', 'hidden', 'starred', 'project'];
-  function loadMeta() {
-    try { return JSON.parse(readFileSync(metaPath, 'utf8')).pages || {}; } catch { return {}; }
+  const META_FIELDS = ['name', 'hidden', 'starred', 'project', 'tags', 'order'];
+  // The file holds both the per-page metadata (`pages`) and the workspace-wide tag
+  // catalog (`tags`: [{ name, color }]). Per-page `tags` are just names referencing
+  // the catalog, so a rename/delete cascades across pages.
+  function loadDoc() {
+    try { const d = JSON.parse(readFileSync(metaPath, 'utf8')); return d && typeof d === 'object' ? d : {}; } catch { return {}; }
   }
-  function saveMeta(pages) {
+  function loadMeta() { return loadDoc().pages || {}; }
+  function loadTags() { const t = loadDoc().tags; return Array.isArray(t) ? t : []; }
+  function writeDoc(doc) {
     try { mkdirSync(join(workDir, '..', '.wcc'), { recursive: true }); } catch { /* exists */ }
+    const out = {};
+    if (Array.isArray(doc.tags) && doc.tags.length) out.tags = doc.tags; // catalog first for readability
+    out.pages = doc.pages || {};
     const tmp = `${metaPath}.tmp.${process.pid}`;
-    writeFileSync(tmp, JSON.stringify({ pages }, null, 2) + '\n');
+    writeFileSync(tmp, JSON.stringify(out, null, 2) + '\n');
     renameSync(tmp, metaPath);
   }
+  function saveMeta(pages) { const doc = loadDoc(); doc.pages = pages; writeDoc(doc); }
+  function saveTags(tags) { const doc = loadDoc(); doc.tags = tags; writeDoc(doc); }
 
   function listReviews() {
     if (!existsSync(workDir)) return [];
@@ -161,6 +171,8 @@ export function createApi(workDir) {
           hidden: !!m.hidden,
           starred: !!m.starred,
           project: m.project || null,
+          tags: Array.isArray(m.tags) ? m.tags : [],
+          order: typeof m.order === 'number' ? m.order : null,
         };
       });
   }
@@ -184,7 +196,7 @@ export function createApi(workDir) {
         return json(res, 200, listReviews());
       }
 
-      // POST /api/page-meta { id, patch: { name?, hidden?, starred?, project? } }
+      // POST /api/page-meta { id, patch: { name?, hidden?, starred?, project?, tags?, order? } }
       // Update a page's UI metadata in .wcc/pages.json. Falsy/empty values clear the
       // field (and an emptied page is dropped) so the file stays lean.
       if (path === '/api/page-meta' && req.method === 'POST') {
@@ -197,12 +209,82 @@ export function createApi(workDir) {
         for (const k of META_FIELDS) {
           if (!(k in patch)) continue;
           const v = patch[k];
-          if (v === null || v === '' || v === false) delete cur[k];
+          // Falsy/empty clears the field so the file stays lean. For tags, an
+          // empty array is the "no tags" state; order 0 is a legitimate value
+          // (first), so only null clears it.
+          if (v === null || v === '' || v === false || (Array.isArray(v) && v.length === 0)) delete cur[k];
           else cur[k] = v;
         }
         if (Object.keys(cur).length) pages[id] = cur; else delete pages[id];
         saveMeta(pages);
         return json(res, 200, { id, meta: pages[id] || {} });
+      }
+
+      // GET /api/tags — the workspace-wide tag catalog [{ name, color }].
+      if (path === '/api/tags' && req.method === 'GET') {
+        return json(res, 200, loadTags());
+      }
+
+      // POST /api/tags — manage the catalog.
+      //   { op: 'upsert', original: name|null, name, color }  create (original null) or rename/recolor
+      //   { op: 'delete', name }                              remove from catalog + every page
+      // A rename cascades to each page's `tags` so references never dangle.
+      if (path === '/api/tags' && req.method === 'POST') {
+        const body = await readBody(req);
+        const op = body.op;
+        const tags = loadTags();
+        const has = (n) => tags.some((t) => t.name.toLowerCase() === String(n).toLowerCase());
+        if (op === 'upsert') {
+          const name = String(body.name || '').trim();
+          const color = String(body.color || '').trim();
+          if (!name) return json(res, 400, { error: 'tag name is required' });
+          if (name.length > 32) return json(res, 400, { error: 'tag name too long' });
+          if (!/^#[0-9a-f]{3,8}$/i.test(color)) return json(res, 400, { error: 'bad color' });
+          const original = body.original ? String(body.original) : null;
+          if (original == null) {
+            if (has(name)) return json(res, 409, { error: 'a tag with that name already exists' });
+            tags.push({ name, color });
+            saveTags(tags);
+          } else {
+            const idx = tags.findIndex((t) => t.name === original);
+            if (idx < 0) return json(res, 404, { error: 'tag not found' });
+            if (name.toLowerCase() !== original.toLowerCase() && has(name)) {
+              return json(res, 409, { error: 'a tag with that name already exists' });
+            }
+            tags[idx] = { name, color };
+            saveTags(tags);
+            if (name !== original) { // cascade the rename across every page
+              const pages = loadMeta();
+              let touched = false;
+              for (const id of Object.keys(pages)) {
+                const pt = pages[id].tags;
+                if (Array.isArray(pt) && pt.includes(original)) {
+                  pages[id].tags = pt.map((t) => (t === original ? name : t));
+                  touched = true;
+                }
+              }
+              if (touched) saveMeta(pages);
+            }
+          }
+          return json(res, 200, loadTags());
+        }
+        if (op === 'delete') {
+          const name = String(body.name || '');
+          saveTags(tags.filter((t) => t.name !== name));
+          const pages = loadMeta(); // strip it from every page that referenced it
+          let touched = false;
+          for (const id of Object.keys(pages)) {
+            const pt = pages[id].tags;
+            if (Array.isArray(pt) && pt.includes(name)) {
+              const left = pt.filter((t) => t !== name);
+              if (left.length) pages[id].tags = left; else delete pages[id].tags;
+              touched = true;
+            }
+          }
+          if (touched) saveMeta(pages);
+          return json(res, 200, loadTags());
+        }
+        return json(res, 400, { error: 'bad op' });
       }
 
       // GET /api/review/:id

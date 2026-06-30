@@ -131,6 +131,10 @@ function escAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 function runningHtml(url) {
   // CSP must explicitly allow framing the WCC origin. default-src 'none' keeps
   // everything else locked down; the iframe gets its own permissions via sandbox.
+  //
+  // `allow` delegates Permissions-Policy features to the cross-origin (127.0.0.1)
+  // iframe. clipboard-write defaults to `self` only, so without this the embedded
+  // app — and ⌘C of a selection — can't write to the clipboard at all.
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <meta http-equiv="Content-Security-Policy"
@@ -141,6 +145,7 @@ function runningHtml(url) {
 </style></head>
 <body>
   <iframe src="${escAttr(url)}"
+    allow="clipboard-read ${url}; clipboard-write ${url}"
     sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads">
   </iframe>
 </body></html>`;
@@ -208,6 +213,18 @@ async function render(starting) {
   lastUp = up;
   const url = wccUrl();
   panel.webview.html = up ? runningHtml(url) : downHtml(url, !!starting);
+}
+
+// Hard-reload the webview. Repainting the same HTML won't reload the iframe, so
+// blank it first, then repaint with a cache-busting query so the embedded app
+// reloads from scratch — the recovery path for a wedged view (F5).
+async function reload() {
+  if (!panel) { await openPanel(); return; }
+  if (!(await isUp())) { await render(false); return; }
+  const url = wccUrl();
+  const busted = url + (url.includes('?') ? '&' : '?') + 'r=' + Date.now();
+  panel.webview.html = '<!DOCTYPE html><html><body></body></html>';
+  panel.webview.html = runningHtml(busted);
 }
 
 function startPolling() {
@@ -306,6 +323,7 @@ function activate(context) {
     vscode.commands.registerCommand('wcc.openExternal', () => {
       vscode.env.openExternal(vscode.Uri.parse(wccUrl()));
     }),
+    vscode.commands.registerCommand('wcc.refresh', () => reload()),
   );
 }
 

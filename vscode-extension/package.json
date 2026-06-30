@@ -59,6 +59,18 @@
         "command": "wcc.openExternal",
         "title": "WCC: Open in browser",
         "category": "Work Command Center"
+      },
+      {
+        "command": "wcc.refresh",
+        "title": "WCC: Refresh",
+        "category": "Work Command Center"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "wcc.refresh",
+        "key": "f5",
+        "when": "activeWebviewPanelId == 'wcc'"
       }
     ],
     "configuration": {
