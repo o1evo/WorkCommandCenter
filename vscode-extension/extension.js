@@ -67,10 +67,24 @@ function isUp(timeoutMs = 600) {
 function listeningPids() {
   const { port } = cfg();
   return new Promise((res) => {
-    execFile('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN'], (err, out) => {
-      if (err || !out) return res([]);
-      res(String(out).split('\n').map((s) => s.trim()).filter(Boolean));
-    });
+    if (process.platform === 'win32') {
+      // Windows has no lsof: parse `netstat -ano` for LISTENING rows whose
+      // local address ends in :<port>, collect the trailing PID column.
+      execFile('cmd', ['/c', `netstat -ano -p tcp | findstr LISTENING`], (err, out) => {
+        if (err || !out) return res([]);
+        const pids = new Set();
+        for (const line of String(out).split('\n')) {
+          const parts = line.trim().split(/\s+/);
+          if (parts.length >= 5 && parts[1].endsWith(`:${port}`)) pids.add(parts[parts.length - 1]);
+        }
+        res([...pids]);
+      });
+    } else {
+      execFile('lsof', ['-ti', `tcp:${port}`, '-sTCP:LISTEN'], (err, out) => {
+        if (err || !out) return res([]);
+        res(String(out).split('\n').map((s) => s.trim()).filter(Boolean));
+      });
+    }
   });
 }
 
@@ -86,12 +100,37 @@ async function startServer() {
   const stateDir = path.join(root, '.wcc');
   fs.mkdirSync(stateDir, { recursive: true });
   const fd = fs.openSync(path.join(stateDir, 'server.log'), 'a');
-  const child = spawn('npm', ['run', 'review'], {
-    cwd: root,
-    detached: true,
-    stdio: ['ignore', fd, fd],
-    env: process.env,
-  });
+  const { port } = cfg();
+  const isWin = process.platform === 'win32';
+  const viteBin = path.join(root, 'node_modules', 'vite', 'bin', 'vite.js');
+
+  let child;
+  if (isWin && fs.existsSync(viteBin)) {
+    // Launch Vite as a single Node process. Going through `npm.cmd` in a shell
+    // spawns cmd → npm → node, and that final node allocates its own console —
+    // which Windows 11 surfaces as a Windows Terminal window even with
+    // `windowsHide`/`detached`. Spawning node directly with `windowsHide`
+    // (CREATE_NO_WINDOW) keeps it headless. ELECTRON_RUN_AS_NODE reuses VS
+    // Code's bundled Node, so we don't depend on `node` being on PATH.
+    child = spawn(process.execPath, [viteBin], {
+      cwd: root,
+      detached: true,
+      stdio: ['ignore', fd, fd],
+      windowsHide: true,
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', WCC_PORT: String(port) },
+    });
+  } else {
+    // POSIX (or Windows without a local vite): `npm run review`. On Windows npm
+    // is `npm.cmd`, which Node 18+ only launches via a shell.
+    child = spawn(isWin ? 'npm.cmd' : 'npm', ['run', 'review'], {
+      cwd: root,
+      detached: true,
+      stdio: ['ignore', fd, fd],
+      env: { ...process.env, WCC_PORT: String(port) },
+      shell: isWin,
+      windowsHide: true,
+    });
+  }
   child.unref();
   try { fs.writeFileSync(path.join(stateDir, 'server.pid'), String(child.pid)); } catch {}
   const deadline = Date.now() + 20000;
