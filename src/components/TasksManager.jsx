@@ -19,11 +19,20 @@ export default function TasksManager({ reviews, currentId, onSelect, onMeta, onC
     return Object.keys(by).sort().map((k) => ({ project: k, rows: by[k].sort(cmp) }));
   }, [reviews, showHidden]);
 
-  // Commit an inline field only when it actually changed (empty clears the override).
+  // Commit an inline field only when it actually changed.
   function commit(r, field, value) {
-    const cur = field === 'name' ? (r.name || '') : (r.project || '');
-    if (value.trim() === cur) return;
-    onMeta(r.id, { [field]: value.trim() });
+    const v = value.trim();
+    if (field === 'name') {
+      // The field is pre-filled with the effective name (override OR the raw title).
+      // Leaving it equal to the title — or clearing it — means "no override" → store '',
+      // which the server treats as clear. Only a genuinely different string is an override.
+      const next = v === '' || v === r.title ? '' : v;
+      if (next === (r.name || '')) return;
+      onMeta(r.id, { name: next });
+      return;
+    }
+    if (v === (r.project || '')) return;
+    onMeta(r.id, { project: v });
   }
 
   return (
@@ -47,7 +56,7 @@ export default function TasksManager({ reviews, currentId, onSelect, onMeta, onC
                 <div key={r.id} className={`tm-row ${r.id === currentId ? 'current' : ''} ${r.hidden ? 'is-hidden' : ''}`}>
                   <button className={`tm-star ${r.starred ? 'on' : ''}`} title={r.starred ? 'Unstar' : 'Star'} aria-label="Star"
                     onClick={() => onMeta(r.id, { starred: !r.starred })}>{r.starred ? '★' : '☆'}</button>
-                  <input className="tm-name" defaultValue={r.name || ''} placeholder={r.title} title={`id: ${r.id}`}
+                  <input className="tm-name" defaultValue={r.name || r.title} placeholder={r.title} title={`id: ${r.id}`}
                     onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
                     onBlur={(e) => commit(r, 'name', e.target.value)} />
                   <input className="tm-proj" defaultValue={r.project || ''} placeholder="project"
