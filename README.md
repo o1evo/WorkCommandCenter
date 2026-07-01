@@ -2,8 +2,9 @@
 
 **A local-first workspace where a Claude Code session reviews your code and tracks your work** — three tabs per task, all backed by plain local files. No DB, no telemetry, nothing leaves your machine.
 
-A localhost web app for driving a single unit of work — keyed by its task id —
-across **three tabs that share one `work/<id>/` directory**:
+A localhost web app — open it in a browser **or as a VS Code editor panel**
+([vscode-extension/](vscode-extension/)) — for driving a single unit of work,
+keyed by its task id, across **three tabs that share one `work/<id>/` directory**:
 
 | tab | what it is | source of truth | authored via |
 |-----|-----------|-----------------|--------------|
@@ -22,6 +23,11 @@ review never goes anywhere.
   `prismjs` (offline syntax highlighting), `@babel/standalone` (transforms
   `Page.jsx` in the browser — no build step), `marked` (Markdown for messages,
   QA plans, and `wcc.Markdown`). No DB, no telemetry.
+- **Navigation:** a **⌘K command palette** switches tasks (fuzzy filter, `#tag`
+  to narrow), a **Manage** modal renames/deletes them, and an in-page **⌘F find
+  bar** searches the rendered content (the editor's native find can't reach
+  inside the diff/page). Three built-in **themes** (Navy / Dark neutral / Light)
+  drive both the chrome and Log pages via `wcc.theme`.
 
 ## Quick start
 
@@ -58,9 +64,9 @@ loopback IP. The port and alias are configurable: set `WCC_PORT` (default `7777`
 `WCC_HOST` (default `wcc`) — both `npm run setup` and `npm run review` read them.
 `npm run install-skill` alone (no deps, no alias) still works if you only want the skills global.
 
-Open the printed URL. The app hosts **multiple reviews at once** — pick one from
-the header switcher dropdown (shown when more than one exists); the 3s poll is
-scoped to the selected id.
+Open the printed URL. The app hosts **multiple tasks at once** — switch between
+them with the **⌘K command palette** (or rename/delete via the **Manage**
+modal); the 3s poll is scoped to the selected id.
 
 **Requirements:** Node 18+ (the scripts use `node:` built-ins and `import.meta`).
 
@@ -92,17 +98,26 @@ only a *remote*: it acts while a Claude session exists, so it doesn't replace a
 
 ### Skills (the reviewer/author automation)
 
-Two Claude Code skills ship **inside this repo** under
-[.claude/skills/](.claude/skills/):
+Claude Code skills ship **inside this repo** under
+[.claude/skills/](.claude/skills/). The two core ones:
 
 - **`wcc-review`** — the reviewer bridge: answer threads, import / refresh /
   seed diffs (see "Participating as the reviewer").
 - **`wcc-worklog`** — author the Log page + QA plan for a task.
 
+Two more drive larger workflows (see their sections below):
+
+- **`gsd-bridge`** — mirror a [GSD / gsd-core](https://github.com/open-gsd/gsd-core) `.planning/` tree
+  into a WCC task, and capture resolved review threads back into it.
+- **`feature-stream`** — a supervised loop that turns a unit of work into a
+  feature worktree + GSD workstream + a live WCC mirror.
+
 When you run Claude Code **inside this repo**, project-level skills are
 auto-discovered — **nothing to install.** To also drive reviews from *other*
 repos, run `npm run install-skill` to symlink them into `~/.claude/skills/`
-(`--copy` to copy instead, `--force` to replace an existing one).
+(`--copy` to copy instead, `--force` to replace an existing one). Only
+`install-skill` installs the cross-project skills globally; running Claude
+inside this repo always sees all of them.
 
 ## How it works (poll-based liveness)
 
@@ -274,6 +289,60 @@ on the next 3s poll (no restart), and the tab only appears when its file exists.
 > + QA plan) and `wcc-review` (the reviewer bridge — answer threads, import/
 > refresh/seed diffs). Both are local-only and route through the same
 > `thread.json`.
+
+## GSD bridge — mirror a planning tree into a task
+
+If your work is tracked in a [GSD / gsd-core](https://github.com/open-gsd/gsd-core) `.planning/` tree,
+the **`gsd-bridge`** skill (CLIs [bin/import-gsd.mjs](bin/import-gsd.mjs) /
+[bin/capture-gsd.mjs](bin/capture-gsd.mjs)) wires it to a WCC task — no
+hand-authoring:
+
+```bash
+# Render STATE/ROADMAP/phases into the Log tab and the latest *-UAT.md into QA:
+node bin/import-gsd.mjs --planning /path/to/.planning --id my-task --title "..."
+#   ...add --repo/--base/--head to also populate the Code Review tab from a diff.
+
+# Pull resolved review threads back into the planning artifacts:
+node bin/capture-gsd.mjs --planning /path/to/.planning --id my-task
+```
+
+`import-gsd` writes `Page.jsx` (phases, plan tasks, state) and `qa-plan.md` (the
+UAT matrix); both survive a `--refresh` and the Code Review tab still streams the
+diff live. It can also inline an optional **custom tab** for extra planning prose.
+`npm run import-gsd` / `npm run capture-gsd` wrap the same CLIs.
+
+## feature-stream — supervised GSD ↔ WCC loop
+
+The **`feature-stream`** skill ([bin/feature-stream.mjs](bin/feature-stream.mjs))
+is a higher-level entrypoint: it turns a unit of work into a feature **git
+worktree** + a **GSD workstream** + a **live WCC mirror**, then you drive the GSD
+phases yourself and `refresh`/`integrate` at each checkpoint. Three subcommands —
+`start`, `refresh`, `integrate`. Workstation-specific overlays of this loop also
+ship as skills in [.claude/skills/](.claude/skills/).
+
+## Relay — story checkpoint runner (PoC)
+
+[bin/relay-*](bin/) is an experimental loop where a headless Claude works a story
+and, when it hits a real product decision, posts a **code-anchored question into
+WCC** and stops; a human answers in the diff context and clicks **▶ Resume
+runner** (`POST /api/review/:id/run`). See [bin/relay-README.md](bin/relay-README.md).
+**Security:** that endpoint runs a local process with no auth — fine for a
+127.0.0.1 single box, but **gate it behind authentication before exposing WCC on
+any network.**
+
+## VS Code extension
+
+[vscode-extension/](vscode-extension/) renders WCC inside a VS Code editor tab,
+with a **▶ Start WCC** button when the server is down and a status-bar toggle. It
+shares the same detached server (pid/log in `.wcc/`) as the MCP, so an external
+start/stop is reflected within 3s. Build + install:
+
+```bash
+cd vscode-extension && npx @vscode/vsce package
+code --install-extension work-command-center-vscode-0.1.0.vsix
+```
+
+See [vscode-extension/README.md](vscode-extension/README.md) for commands and settings.
 
 ## Participating as the reviewer (Claude session)
 
