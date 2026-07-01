@@ -75,7 +75,7 @@ export default function HunkView({ hunk, threads, onSend, onDelete, onDeleteThre
               <React.Fragment key={i}>
                 <tr ref={(el) => { rowRefs.current[key] = el; }}
                     id={hasMsgs ? `ln-${key}` : undefined}
-                    className={`row row-${ln.kind} ${litSet.has(key) ? 'wcc-hl-line' : ''}`}>
+                    className={`row row-${ln.kind} ${litSet.has(key) ? 'taskforge-hl-line' : ''}`}>
                   <td className="ln ln-comment" title="comment on this line" onClick={() => toggleLine(key, hasMsgs)}>{ln.oldNo ?? ''}</td>
                   <td className="ln ln-comment" title="comment on this line" onClick={() => toggleLine(key, hasMsgs)}>{ln.newNo ?? ''}</td>
                   <td className="gutter">{ln.kind === 'add' ? '+' : ln.kind === 'del' ? '-' : ' '}</td>

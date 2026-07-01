@@ -52,7 +52,7 @@ export default function ReviewSidebar({ hunks, threads, anchors, onJump, onClose
   const codeComments = shownComments.filter((c) => c.kind !== 'log');
 
   return (
-    <aside className="review-sidebar" data-wcc-ui>
+    <aside className="review-sidebar" data-taskforge-ui>
       {onClose && (
         <button className="rs-collapse" onClick={onClose} title="hide the index">⟨ hide</button>
       )}

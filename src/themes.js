@@ -1,5 +1,5 @@
 // Theme presets — the single source of truth for BOTH the app chrome (CSS custom
-// properties on :root) and agent-authored Log pages (the wcc.theme palette). Add a
+// properties on :root) and agent-authored Log pages (the taskforge.theme palette). Add a
 // theme = add one entry here; chrome + pages pick it up. Each theme lists the full
 // CSS-variable set; pagePalette() derives the keys pages use from the same values.
 
@@ -39,7 +39,7 @@ export const THEMES = {
 export const DEFAULT_THEME = 'navy';
 export const THEME_LIST = Object.entries(THEMES).map(([id, t]) => ({ id, label: t.label }));
 
-// The palette handed to Log pages as wcc.theme. Semantic keys (the ones pages use):
+// The palette handed to Log pages as taskforge.theme. Semantic keys (the ones pages use):
 // text/muted/border/panel/panel2/link/bg + ok/warn/danger and the severity colors.
 export function pagePalette(name) {
   const v = (THEMES[name] || THEMES[DEFAULT_THEME]).vars;
@@ -53,7 +53,7 @@ export function pagePalette(name) {
 }
 
 // Push a theme's CSS variables onto :root (chrome re-themes instantly; pages re-theme
-// via wcc.theme on the next render). Safe to call before React mounts (no flash).
+// via taskforge.theme on the next render). Safe to call before React mounts (no flash).
 export function applyTheme(name) {
   if (typeof document === 'undefined') return;
   const t = THEMES[name] || THEMES[DEFAULT_THEME];
@@ -63,5 +63,5 @@ export function applyTheme(name) {
 }
 
 export function readSavedTheme() {
-  try { return localStorage.getItem('wcc.theme') || DEFAULT_THEME; } catch { return DEFAULT_THEME; }
+  try { return localStorage.getItem('taskforge.theme') || DEFAULT_THEME; } catch { return DEFAULT_THEME; }
 }

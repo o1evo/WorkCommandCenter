@@ -17,5 +17,5 @@ dist/
 # LICENSE copy the release workflow drops into the extension so it ships in the .vsix.
 /vscode-extension/LICENSE
 
-# WCC controller runtime state (pidfile + server log) — see bin/wcc-mcp.mjs
-.wcc/
+# TaskForge controller runtime state (pidfile + server log) — see bin/taskforge-mcp.mjs
+.taskforge/

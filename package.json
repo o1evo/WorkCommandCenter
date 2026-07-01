@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Work Command Center — local, private work hub: interactive work-log page, file-bridge code review, and QA plan per task, with a Claude reviewer chat.",
+  "description": "TaskForge — local, private work hub: interactive work-log page, file-bridge code review, and QA plan per task, with a Claude reviewer chat.",
   "repository": {
     "type": "git",
-    "url": "https://github.com/o1evo/WorkCommandCenter.git"
+    "url": "https://github.com/o1evo/TaskForge.git"
   },
   "scripts": {
     "setup": "npm install && node bin/setup.mjs",

@@ -6,7 +6,7 @@ export async function listReviews() {
   return r.json();
 }
 
-// Update a page's UI metadata (name / hidden / starred / project) in .wcc/pages.json.
+// Update a page's UI metadata (name / hidden / starred / project) in .taskforge/pages.json.
 export async function setPageMeta(id, patch) {
   const r = await fetch('/api/page-meta', {
     method: 'POST',

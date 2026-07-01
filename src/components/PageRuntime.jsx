@@ -13,10 +13,10 @@ import CommentLayer from './CommentLayer.jsx';
 // touches nothing but the local filesystem (see README). Do not expose it.
 //
 // Authoring contract (kept deliberately tiny so pages are easy for Claude to
-// write): the file defines `function Page({ wcc }) { … }` and uses NO imports /
+// write): the file defines `function Page({ taskforge }) { … }` and uses NO imports /
 // exports. In scope it gets: `React`, the common hooks (`useState`, `useEffect`,
-// `useRef`, `useMemo`, `useCallback`), and receives `wcc` as a prop — the page
-// API built in buildWcc() below (data + a <wcc.Thread> for chat-on-a-section).
+// `useRef`, `useMemo`, `useCallback`), and receives `taskforge` as a prop — the page
+// API built in buildTaskForge() below (data + a <taskforge.Thread> for chat-on-a-section).
 
 const HOOK_PREAMBLE =
   'const { useState, useEffect, useRef, useMemo, useCallback } = React;';
@@ -33,18 +33,18 @@ function compile(source) {
   });
   // Function-body scope: declarations hoist, so `return Page;` after the user
   // code yields the component. React is captured here (stable); fresh data is
-  // delivered per-render via the wcc prop, not closed over at compile time.
+  // delivered per-render via the taskforge prop, not closed over at compile time.
   const factory = new Function('React', `${HOOK_PREAMBLE}\n${code}\n; return Page;`);
   const Page = factory(React);
   if (typeof Page !== 'function') {
-    throw new Error('Page.jsx must define `function Page({ wcc }) { … }`');
+    throw new Error('Page.jsx must define `function Page({ taskforge }) { … }`');
   }
   return Page;
 }
 
-export default function PageRuntime({ source, wcc }) {
+export default function PageRuntime({ source, taskforge }) {
   // Only re-transform when the source actually changes; re-render with fresh
-  // wcc every poll so threads/data stay live without recompiling.
+  // taskforge every poll so threads/data stay live without recompiling.
   const compiled = useMemo(() => {
     try {
       return { Page: compile(source), error: null };
@@ -60,27 +60,27 @@ export default function PageRuntime({ source, wcc }) {
   const { Page } = compiled;
   return (
     <PageErrorBoundary source={source}>
-      <div className="wcc-page" ref={pageRef} style={{ position: 'relative' }}>
-        <Page wcc={wcc} />
+      <div className="taskforge-page" ref={pageRef} style={{ position: 'relative' }}>
+        <Page taskforge={taskforge} />
         <CommentLayer
           pageRef={pageRef}
-          anchors={wcc.data.anchors || {}}
-          threads={wcc.threads}
-          version={wcc.data._mtime}
-          onCreate={wcc.createAnchor}
-          onSetState={wcc.setAnchorState}
-          onDeleteAnchor={wcc.deleteAnchor}
-          onSend={wcc.send}
-          onDelete={wcc.deleteMessage}
+          anchors={taskforge.data.anchors || {}}
+          threads={taskforge.threads}
+          version={taskforge.data._mtime}
+          onCreate={taskforge.createAnchor}
+          onSetState={taskforge.setAnchorState}
+          onDeleteAnchor={taskforge.deleteAnchor}
+          onSend={taskforge.send}
+          onDelete={taskforge.deleteMessage}
         />
       </div>
     </PageErrorBoundary>
   );
 }
 
-// Builds the page API handed to every Page as the `wcc` prop. Rebuilt each
-// render from the latest polled data, so <wcc.Thread> always shows live messages.
-export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState, onAnchorDelete, onNavigate, theme }) {
+// Builds the page API handed to every Page as the `taskforge` prop. Rebuilt each
+// render from the latest polled data, so <taskforge.Thread> always shows live messages.
+export function buildTaskForge({ id, data, onSend, onDelete, onAnchor, onAnchorState, onAnchorDelete, onNavigate, theme }) {
   const threads = data.threads || {};
   const hunks = data.hunks || [];
 
@@ -122,7 +122,7 @@ export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState, 
     return true;
   }
 
-  // <wcc.CodeRef file="app/models/x.rb" line={50} /> — renders a clickable
+  // <taskforge.CodeRef file="app/models/x.rb" line={50} /> — renders a clickable
   // file:line that jumps to the matching Code Review hunk/finding. If the file
   // isn't in the diff, renders plain text + a muted "(not in diff)" note rather
   // than a dead link, so out-of-diff findings stay honest.
@@ -130,14 +130,14 @@ export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState, 
     if (!file) return null;
     const text = children || label || (line != null ? `${file}:${line}` : file);
     const t = resolveCodeTarget(file, line);
-    if (!t) return <span className="wcc-coderef wcc-coderef-missing" title="not in this PR's diff">{text} <span className="wcc-coderef-tag">(not in diff)</span></span>;
+    if (!t) return <span className="taskforge-coderef taskforge-coderef-missing" title="not in this PR's diff">{text} <span className="taskforge-coderef-tag">(not in diff)</span></span>;
     return (
-      <a className="wcc-coderef" href="#" title="open in Code Review"
+      <a className="taskforge-coderef" href="#" title="open in Code Review"
          onClick={(e) => { e.preventDefault(); openCode(file, line); }}>{text}</a>
     );
   }
 
-  // <wcc.Thread target="log:my-section" title="…" /> — a self-contained chat
+  // <taskforge.Thread target="log:my-section" title="…" /> — a self-contained chat
   // anchored to a section/idea the page chooses. Reuses the same file-bridge
   // Thread the Code Review tab uses; the reviewer Claude session answers it.
   function PageThread({ target, title, compact = true }) {
@@ -164,10 +164,10 @@ export function buildWcc({ id, data, onSend, onDelete, onAnchor, onAnchorState, 
     hunks,
     threads,
     Thread: PageThread,
-    theme: theme || {}, // active color palette — pages do `const C = wcc.theme` and theme for free
-    Markdown, // <wcc.Markdown text="# full markdown\n- lists, tables, ```fences``` " />
-    CodeRef,        // <wcc.CodeRef file="app/x.rb" line={50} /> — link to the Code Review tab
-    openCode,       // wcc.openCode(file, line) → jump to Code Review; returns false if not in diff
+    theme: theme || {}, // active color palette — pages do `const C = taskforge.theme` and theme for free
+    Markdown, // <taskforge.Markdown text="# full markdown\n- lists, tables, ```fences``` " />
+    CodeRef,        // <taskforge.CodeRef file="app/x.rb" line={50} /> — link to the Code Review tab
+    openCode,       // taskforge.openCode(file, line) → jump to Code Review; returns false if not in diff
     send: (target, text) => onSend(target, text),
     deleteMessage: (target, messageId) => onDelete(target, messageId),
     createAnchor: (anchor) => onAnchor(anchor), // used by the comment layer
@@ -193,7 +193,7 @@ class PageErrorBoundary extends React.Component {
   render() {
     if (this.state.error) {
       return (
-        <div className="wcc-page-error">
+        <div className="taskforge-page-error">
           <strong>This page threw while rendering.</strong>
           <pre>{String(this.state.error && this.state.error.stack || this.state.error)}</pre>
           <p>Fix <code>Page.jsx</code> and it will re-render on the next poll.</p>
@@ -206,12 +206,12 @@ class PageErrorBoundary extends React.Component {
 
 function CompileError({ error }) {
   return (
-    <div className="wcc-page-error">
+    <div className="taskforge-page-error">
       <strong>Page.jsx didn’t compile.</strong>
       <pre>{String(error && error.message || error)}</pre>
       <p>
         Pages use plain JSX with no imports/exports and must define{' '}
-        <code>function Page({'{ wcc }'}) {'{ … }'}</code>.
+        <code>function Page({'{ taskforge }'}) {'{ … }'}</code>.
       </p>
     </div>
   );

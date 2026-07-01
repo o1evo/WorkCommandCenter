@@ -18,7 +18,7 @@ progress:
 
 ### Decisions
 
-- Seed decision that already existed before any WCC capture.
+- Seed decision that already existed before any TaskForge capture.
 
 ### Pending Todos
 

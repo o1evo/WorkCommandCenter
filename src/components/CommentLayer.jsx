@@ -3,7 +3,7 @@ import Thread from './Thread.jsx';
 import { captureSelection, locate, rectsOf, freshKey } from '../anchors.js';
 
 // Free-selection commenting over a Log page. Renders three things, all tagged
-// data-wcc-ui so they're excluded from the anchor text math:
+// data-taskforge-ui so they're excluded from the anchor text math:
 //   1. highlight overlays for every non-hidden anchor that can be located,
 //   2. a floating "Comment" button when there's a text selection,
 //   3. a popover (the chat thread) for the focused anchor.
@@ -60,7 +60,7 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
   // Detect a text selection inside the page (ignore clicks within our own UI).
   useEffect(() => {
     function onMouseUp(e) {
-      if (e.target.closest && e.target.closest('[data-wcc-ui]')) return;
+      if (e.target.closest && e.target.closest('[data-taskforge-ui]')) return;
       const root = pageRef.current;
       if (!root) return;
       const sel = captureSelection(root);
@@ -76,7 +76,7 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
   // leaves a selection is NOT a click-to-open — that's the user copying text.
   useEffect(() => {
     function onClick(e) {
-      if (e.target.closest && e.target.closest('[data-wcc-ui]')) return; // our own UI
+      if (e.target.closest && e.target.closest('[data-taskforge-ui]')) return; // our own UI
       const root = pageRef.current;
       if (!root) return;
       const sel = window.getSelection();
@@ -101,7 +101,7 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
     if (!openKey && !draft) return;
     function close() { setOpenKey(null); setDraft(null); }
     function onDown(e) {
-      if (e.target.closest && e.target.closest('[data-wcc-ui]')) return;
+      if (e.target.closest && e.target.closest('[data-taskforge-ui]')) return;
       close();
     }
     function onKey(e) { if (e.key === 'Escape') close(); }
@@ -136,12 +136,12 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
   const anchorPoint = openRects && openRects[0];
 
   return (
-    <div className="wcc-comments" data-wcc-ui>
+    <div className="taskforge-comments" data-taskforge-ui>
       {/* highlight overlays */}
       {Object.entries(positions).map(([key, rects]) => {
         const a = anchors[key];
         if (!a) return null; // anchor just deleted; positions/orphans lag anchors by a render
-        const cls = `wcc-hl ${a.state === 'resolved' ? 'resolved' : ''} ${openKey === key ? 'active' : ''}`;
+        const cls = `taskforge-hl ${a.state === 'resolved' ? 'resolved' : ''} ${openKey === key ? 'active' : ''}`;
         return rects.map((r, i) => (
           <div
             key={`${key}-${i}`}
@@ -154,7 +154,7 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
       {/* floating Comment button on a fresh selection */}
       {pending && !openKey && !draft && (
         <button
-          className="wcc-comment-btn"
+          className="taskforge-comment-btn"
           style={{ top: Math.max(0, pending.rect.top - 34), left: pending.rect.left }}
           onMouseDown={(e) => e.preventDefault()}
           onClick={startDraft}
@@ -166,18 +166,18 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
       {/* draft: a not-yet-persisted comment — highlight + composer; nothing is saved
           until the first message is sent (cancel/✕ leaves no anchor or empty thread) */}
       {draft && draft.rect && (
-        <div className="wcc-hl active" style={{ top: draft.rect.top, left: draft.rect.left, width: draft.rect.width, height: draft.rect.height }} />
+        <div className="taskforge-hl active" style={{ top: draft.rect.top, left: draft.rect.left, width: draft.rect.width, height: draft.rect.height }} />
       )}
       {draft && (
         <div
           ref={popRef}
-          className="wcc-popover"
+          className="taskforge-popover"
           style={{ top: draft.rect.top + draft.rect.height + 6, left: clampLeft(draft.rect.left, pageRef) }}
         >
-          <div className="wcc-popover-head">
-            <span className="wcc-quote">“{truncate(draft.quote, 80)}”</span>
-            <div className="wcc-popover-actions">
-              <button className="wcc-act" title="Cancel" aria-label="Cancel" onClick={() => setDraft(null)}>✕</button>
+          <div className="taskforge-popover-head">
+            <span className="taskforge-quote">“{truncate(draft.quote, 80)}”</span>
+            <div className="taskforge-popover-actions">
+              <button className="taskforge-act" title="Cancel" aria-label="Cancel" onClick={() => setDraft(null)}>✕</button>
             </div>
           </div>
           <Thread messages={[]} onSend={sendDraft} compact />
@@ -188,22 +188,22 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
       {openAnchor && anchorPoint && (
         <div
           ref={popRef}
-          className="wcc-popover"
+          className="taskforge-popover"
           style={{ top: anchorPoint.top + anchorPoint.height + 6, left: clampLeft(anchorPoint.left, pageRef) }}
         >
-          <div className="wcc-popover-head">
-            <span className="wcc-quote">“{truncate(openAnchor.quote, 80)}”</span>
-            <div className="wcc-popover-actions">
+          <div className="taskforge-popover-head">
+            <span className="taskforge-quote">“{truncate(openAnchor.quote, 80)}”</span>
+            <div className="taskforge-popover-actions">
               {openAnchor.state === 'resolved' ? (
-                <button className="wcc-act" title="Reopen" aria-label="Reopen" onClick={() => onSetState(openKey, 'open')}>↺</button>
+                <button className="taskforge-act" title="Reopen" aria-label="Reopen" onClick={() => onSetState(openKey, 'open')}>↺</button>
               ) : (
-                <button className="wcc-act" title="Resolve" aria-label="Resolve" onClick={() => onSetState(openKey, 'resolved')}>✓</button>
+                <button className="taskforge-act" title="Resolve" aria-label="Resolve" onClick={() => onSetState(openKey, 'resolved')}>✓</button>
               )}
-              <button className="wcc-act" title="Hide (stays in the threads view)" aria-label="Hide" onClick={() => { onSetState(openKey, 'hidden'); setOpenKey(null); }}>⊘</button>
+              <button className="taskforge-act" title="Hide (stays in the threads view)" aria-label="Hide" onClick={() => { onSetState(openKey, 'hidden'); setOpenKey(null); }}>⊘</button>
               {onDeleteAnchor && (
-                <button className="wcc-act wcc-act-danger" title="Delete comment + thread" aria-label="Delete" onClick={() => { if (window.confirm('Delete this comment and its thread? This cannot be undone.')) { onDeleteAnchor(openKey); setOpenKey(null); } }}>🗑</button>
+                <button className="taskforge-act taskforge-act-danger" title="Delete comment + thread" aria-label="Delete" onClick={() => { if (window.confirm('Delete this comment and its thread? This cannot be undone.')) { onDeleteAnchor(openKey); setOpenKey(null); } }}>🗑</button>
               )}
-              <button className="wcc-act" title="Close" aria-label="Close" onClick={() => setOpenKey(null)}>✕</button>
+              <button className="taskforge-act" title="Close" aria-label="Close" onClick={() => setOpenKey(null)}>✕</button>
             </div>
           </div>
           <Thread
@@ -217,18 +217,18 @@ export default function CommentLayer({ pageRef, anchors, threads, version, onCre
 
       {/* outdated (orphaned) comments — quote no longer found after an edit */}
       {orphans.length > 0 && (
-        <div className="wcc-orphans" data-wcc-ui>
-          <button className="wcc-orphans-chip" onClick={() => setShowOrphans((s) => !s)}>
+        <div className="taskforge-orphans" data-taskforge-ui>
+          <button className="taskforge-orphans-chip" onClick={() => setShowOrphans((s) => !s)}>
             {orphans.length} outdated
           </button>
           {showOrphans && (
-            <div className="wcc-orphans-list">
+            <div className="taskforge-orphans-list">
               {orphans.map((key) => {
                 const a = anchors[key];
                 if (!a) return null; // deleted anchor still in the lagging orphans list
                 return (
-                  <div key={key} className="wcc-orphan">
-                    <span className="wcc-quote">“{truncate(a.quote, 60)}”</span>
+                  <div key={key} className="taskforge-orphan">
+                    <span className="taskforge-quote">“{truncate(a.quote, 60)}”</span>
                     <button onClick={() => onSetState(key, 'hidden')}>Dismiss</button>
                     {onDeleteAnchor && <button onClick={() => onDeleteAnchor(key)}>Delete</button>}
                   </div>

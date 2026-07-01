@@ -46,12 +46,12 @@ function renderPageText(src) {
     useEffect: () => {}, useRef: () => ({ current: null }),
     useMemo: (f) => f(), useCallback: (f) => f,
   };
-  const wcc = {
+  const taskforge = {
     Markdown: ({ text }) => { out += (text || '') + ' '; return null; },
     Thread: () => null, CodeRef: () => null, openCode: () => false,
   };
   const Page = new Function('React', `const {useState,useEffect,useRef,useMemo,useCallback}=React;\n${code}\n;return Page;`)(React);
-  Page({ wcc });
+  Page({ taskforge });
   return out;
 }
 function compiles(src) {
@@ -110,7 +110,7 @@ try {
   cpSync(FIXTURE, join(sandbox, '.planning'), { recursive: true });
   node('capture-gsd.mjs', ['--id', ID, '--planning', join(sandbox, '.planning')]);
 
-  const caps = readFileSync(join(sandbox, '.planning', 'WCC-CAPTURES.md'), 'utf8');
+  const caps = readFileSync(join(sandbox, '.planning', 'TaskForge-CAPTURES.md'), 'utf8');
   ok(/phases\/01-foo\/01-CONTEXT\.md \(phase decision\)/.test(caps), 'phase-anchored decision routes to the phase CONTEXT');
   ok(/PROJECT\.md → Key Decisions/.test(caps), 'global decision routes to PROJECT Key Decisions');
   ok(/Bar ships behind a flag/.test(caps) && /Who owns the flag rollout/.test(caps),
@@ -134,7 +134,7 @@ try {
   // Idempotency: a second run captures nothing new.
   const before = caps.length;
   node('capture-gsd.mjs', ['--id', ID, '--planning', join(sandbox, '.planning')]);
-  ok(readFileSync(join(sandbox, '.planning', 'WCC-CAPTURES.md'), 'utf8').length === before, 'second capture is idempotent (no duplicates)');
+  ok(readFileSync(join(sandbox, '.planning', 'TaskForge-CAPTURES.md'), 'utf8').length === before, 'second capture is idempotent (no duplicates)');
 } finally {
   rmSync(sandbox, { recursive: true, force: true });
   rmSync(WORK, { recursive: true, force: true });

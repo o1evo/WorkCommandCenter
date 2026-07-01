@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// Capture resolved WCC threads into a GSD planning tree — the writeback half of
-// the GSD↔WCC bridge (see bin/import-gsd.mjs for the read half).
+// Capture resolved TaskForge threads into a GSD planning tree — the writeback half of
+// the GSD↔TaskForge bridge (see bin/import-gsd.mjs for the read half).
 //
-// DESIGN (single-writer handoff, not a merge): WCC threads are the conversation
+// DESIGN (single-writer handoff, not a merge): TaskForge threads are the conversation
 // GSD doesn't have. Rather than edit GSD-owned files — STATE.md is *reconstructed*
-// by `gsd-tools state sync`, so anything WCC writes there can be silently clobbered
-// — this tool APPENDS marked outcomes to a dedicated, WCC-owned handoff file:
+// by `gsd-tools state sync`, so anything TaskForge writes there can be silently clobbered
+// — this tool APPENDS marked outcomes to a dedicated, TaskForge-owned handoff file:
 //
-//     .planning/WCC-CAPTURES.md
+//     .planning/TaskForge-CAPTURES.md
 //
-// WCC is the sole appender; GSD never reconstructs this file. GSD (or a reviewer
+// TaskForge is the sole appender; GSD never reconstructs this file. GSD (or a reviewer
 // session) then ingests pending entries into GSD's CANONICAL stores on its own
 // terms and checks the box — a producer→consumer queue, decoupled in time:
 //
@@ -20,11 +20,11 @@
 // The marker is the gate: a thread is captured only once a reviewer message states
 // a marked outcome — distillation stays a human judgment, not machine summary.
 // Idempotent via a stable per-(thread, message, KIND) marker
-// <!-- wcc:<key>#<msg>:<kind> --> on each entry, so re-runs never duplicate AND a single
+// <!-- taskforge:<key>#<msg>:<kind> --> on each entry, so re-runs never duplicate AND a single
 // message that states multiple outcomes (e.g. a Decision AND an Open question) yields one
 // entry per kind. (The msg is also stamped {captured:true} for the UI, but the file marker
 // is the sole idempotency source.) MIGRATION: pre-fix markers were kind-agnostic
-// <!-- wcc:<key>#<msg> -->; on first run after upgrading, a previously-captured outcome may
+// <!-- taskforge:<key>#<msg> -->; on first run after upgrading, a previously-captured outcome may
 // be re-appended once under the new kind-suffixed marker, then is idempotent thereafter.
 //
 // Usage:
@@ -35,7 +35,7 @@ import { dirname, join, resolve, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const CAPTURES_FILE = 'WCC-CAPTURES.md';
+const CAPTURES_FILE = 'TaskForge-CAPTURES.md';
 
 const MARKERS = [
   { re: /\*\*Decision:\*\*\s*(.+)/i, kind: 'Decision', target: 'PROJECT.md → Key Decisions' },
@@ -61,10 +61,10 @@ function targetFor(marker, key) {
     : `${ctx} (phase ${marker.kind.toLowerCase()})`;
 }
 
-const HEADER = `# WCC Captures
+const HEADER = `# TaskForge Captures
 
-> **WCC-owned handoff file — GSD does not reconstruct this.** \`bin/capture-gsd.mjs\`
-> appends marked outcomes from WCC review threads here (append-only, idempotent).
+> **TaskForge-owned handoff file — GSD does not reconstruct this.** \`bin/capture-gsd.mjs\`
+> appends marked outcomes from TaskForge review threads here (append-only, idempotent).
 > GSD or a reviewer session **ingests** each pending entry into its canonical store
 > (see *target*), then ticks the box. This decouples the conversation surface from
 > GSD's own files so neither clobbers the other.
@@ -126,7 +126,7 @@ function writeAtomic(out, contents) {
 function renderEntry(marker, kind, text, key, msgId, date, workId, target) {
   return [
     `- [ ] **${kind}** — ${oneLine(text)} <!-- ${marker} -->`,
-    `      ↳ source: WCC thread \`${key}\` · msg ${msgId} · ${date} · work/${workId}`,
+    `      ↳ source: TaskForge thread \`${key}\` · msg ${msgId} · ${date} · work/${workId}`,
     `      ↳ target: ${target}`,
     '',
   ].join('\n');
@@ -134,7 +134,7 @@ function renderEntry(marker, kind, text, key, msgId, date, workId, target) {
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  if (!args.id) die('provide --id <wcc work id>.');
+  if (!args.id) die('provide --id <taskforge work id>.');
   if (!args.planning) die('provide --planning <path to .planning dir or project root>.');
   const dryRun = !!args['dry-run'];
   const workId = String(args.id);
@@ -161,9 +161,9 @@ function main() {
         // Per-(thread, message, KIND) marker — so a message stating both a **Decision:**
         // and an **Open question:** produces both entries (not just the first). The file
         // marker is the sole idempotency gate; msg.captured below is an informational stamp.
-        const marker = `wcc:${key}#${msg.id}:${kindSlug(m.kind)}`;
+        const marker = `taskforge:${key}#${msg.id}:${kindSlug(m.kind)}`;
         if (captures.includes(`<!-- ${marker} -->`)) {
-          skipped.push({ key, kind: m.kind, reason: 'already in WCC-CAPTURES.md' });
+          skipped.push({ key, kind: m.kind, reason: 'already in TaskForge-CAPTURES.md' });
           any = true;
           continue;
         }

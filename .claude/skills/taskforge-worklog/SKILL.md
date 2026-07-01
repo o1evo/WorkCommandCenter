@@ -1,17 +1,17 @@
 ---
-name: wcc-worklog
-description: Track multi-step work as an interactive page in the Work Command Center app, not just markdown. Use when starting a new story/feature/investigation, when given a task id or URL, or when the user says "new story", "new task", "start tracking", "log this", "work command center", "WCC", "use WCC", "build a log page", or "work log page". The log lives as work/<id>/Page.jsx — bespoke interactive React with anchored Claude chat threads — paired with the Code Review tab for the same task id.
+name: taskforge-worklog
+description: Track multi-step work as an interactive page in the TaskForge app, not just markdown. Use when starting a new story/feature/investigation, when given a task id or URL, or when the user says "new story", "new task", "start tracking", "log this", "TaskForge", "TaskForge", "use TaskForge", "build a log page", or "work log page". The log lives as work/<id>/Page.jsx — bespoke interactive React with anchored Claude chat threads — paired with the Code Review tab for the same task id.
 ---
 
-# Work Log v2 — Work Command Center
+# Work Log v2 — TaskForge
 
 The work log is a **bespoke interactive React page** that Claude authors per task and renders
-live in the **Work Command Center** app (this repo, `code-reviews`). Each task has tabs that share
+live in the **TaskForge** app (this repo, `code-reviews`). Each task has tabs that share
 one id:
 
 - **Log** — the page you author (`work/<id>/Page.jsx`): findings, timeline, follow-ups,
   status — *interactive*, with chat threads you can anchor to any section.
-- **Code Review** — the annotated diff + per-hunk threads, driven by the `wcc-review` skill.
+- **Code Review** — the annotated diff + per-hunk threads, driven by the `taskforge-review` skill.
 - **QA Plan** — a plain-Markdown test plan (`work/<id>/qa-plan.md`) with a Copy button.
 
 `<id>` is a short lowercase slug — a ticket id (`cu-1234`), an issue number, or any stable
@@ -36,14 +36,14 @@ tracker. Pull out only what you need (title, status, description, links).
 
 What a new branch is **based on** varies by repo and team — `main`, a `develop` branch, or the
 latest release tag (for a tag-based deploy flow where `main` is not a stable release). So the
-skill **asks once per target repo and remembers the answer** in `.wcc/worklog.json` (gitignored,
+skill **asks once per target repo and remembers the answer** in `.taskforge/worklog.json` (gitignored,
 machine-local — never hard-code one team's convention here). Default is `main`.
 
 Read the remembered base for this repo:
 
 ```bash
 repo=<repo-path>
-base=$(node -e 'const fs=require("fs"),f=".wcc/worklog.json";const j=fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):{};process.stdout.write((j.branchBase||{})[process.argv[1]]||"")' "$repo")
+base=$(node -e 'const fs=require("fs"),f=".taskforge/worklog.json";const j=fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):{};process.stdout.write((j.branchBase||{})[process.argv[1]]||"")' "$repo")
 ```
 
 - **First time for this repo (`base` empty):** ask *"What should new branches in `<repo>` be based
@@ -51,7 +51,7 @@ base=$(node -e 'const fs=require("fs"),f=".wcc/worklog.json";const j=fs.existsSy
   ref, or the token `latest-release-tag` to always pick the newest `release-*` tag):
 
   ```bash
-  node -e 'const fs=require("fs"),f=".wcc/worklog.json";const j=fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):{};(j.branchBase||(j.branchBase={}))[process.argv[1]]=process.argv[2];fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")' "$repo" "<their-answer>"
+  node -e 'const fs=require("fs"),f=".taskforge/worklog.json";const j=fs.existsSync(f)?JSON.parse(fs.readFileSync(f)):{};(j.branchBase||(j.branchBase={}))[process.argv[1]]=process.argv[2];fs.writeFileSync(f,JSON.stringify(j,null,2)+"\n")' "$repo" "<their-answer>"
   ```
 
 - **Resolve + branch** (a literal ref is used as-is; `latest-release-tag` resolves to the newest
@@ -85,7 +85,7 @@ Build a page when the task involves research, multiple implementation steps, dec
 need justification for review, or testing with results to record. **Don't** build one for a
 one-line fix or typo — those don't need a work log at all.
 
-## Getting the task into the Work Command Center
+## Getting the task into the TaskForge
 
 A task shows up in the app only once `work/<id>/` exists. Create it by importing the diff
 (this also populates the Code Review tab), from the CodeReviews repo root:
@@ -108,7 +108,7 @@ node bin/import.mjs --repo <repo-path> --base "$base" --head WORKTREE \
 Then author the Log page → `work/<id>/Page.jsx`. Run the app and open it:
 
 ```bash
-npm run review        # http://127.0.0.1:7777 (or http://wcc:7777; set WCC_PORT to change)
+npm run review        # http://127.0.0.1:7777 (or http://taskforge:7777; set TASKFORGE_PORT to change)
 ```
 
 The page renders **live**: edit `Page.jsx`, the app re-renders on its 3s poll — no restart.
@@ -116,11 +116,11 @@ The page renders **live**: edit `Page.jsx`, the app re-renders on its 3s poll �
 ## Authoring the page
 
 The page is real React you write for *this* task — not a markdown dump. The authoring contract,
-the `wcc` page API (data + anchored chat threads + markdown), worked examples, and troubleshooting
+the `taskforge` page API (data + anchored chat threads + markdown), worked examples, and troubleshooting
 are in **[references/page-authoring.md](references/page-authoring.md)** — read it before writing a
 page. The essentials:
 
-- Define `function Page({ wcc }) { … }`. **No imports/exports.**
+- Define `function Page({ taskforge }) { … }`. **No imports/exports.**
 - In scope: `React` + hooks (`useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`).
 - A broken page shows an error panel (compile + runtime), never a white screen — iterate freely.
 
@@ -132,7 +132,7 @@ page. The essentials:
    from the page author. Each comment can be **resolved** or **hidden**; if a later page edit changes
    the quoted text, the comment is flagged **outdated** (an "N outdated" chip) rather than lost.
 2. **Author-placed threads.** Pin a discussion to a fixed spot in the page source with
-   `<wcc.Thread target="log:<anchor>" title="…" />` — use this for a discussion you want *always
+   `<taskforge.Thread target="log:<anchor>" title="…" />` — use this for a discussion you want *always
    visible* at a known section (e.g. a key decision), not an ad-hoc note.
 
 Both are `log:` threads in the same `work/<id>/thread.json`; the reviewer Claude session answers
@@ -147,7 +147,7 @@ A good Log page lets a reader see what was tried, what worked, what didn't, and 
 | header | title + a status pill + a link back to the tracker |
 | findings | file:line refs, the exact queries/commands you ran — filter by open/resolved |
 | timeline | dated, collapsible; **log reverts and *why*** ("Reverted X because Y" is the valuable part) |
-| open questions | a comment on the relevant text (select it → 💬) or a pinned `<wcc.Thread>` |
+| open questions | a comment on the relevant text (select it → 💬) or a pinned `<taskforge.Thread>` |
 | follow-ups | a checklist of what's still to do |
 | test results | specific numbers, expected vs actual |
 
@@ -189,13 +189,13 @@ Notes:
   own it elsewhere. The rendered checkboxes are read-only (the source of truth is the `.md`); sign-off
   happens wherever QA pastes it, not by ticking boxes in the viewer.
 - **Edit the file to update it.** `qa-plan.md` re-renders on the 3s poll, same as `Page.jsx`.
-- **Markdown everywhere.** The same renderer backs `wcc.Markdown` — a Log page can render rich markdown
-  inline with `<wcc.Markdown text={`…`} />` (headings, lists, tables, fenced code).
+- **Markdown everywhere.** The same renderer backs `taskforge.Markdown` — a Log page can render rich markdown
+  inline with `<taskforge.Markdown text={`…`} />` (headings, lists, tables, fenced code).
 
 ## How the reviewer answers page threads
 
 Page chat threads (`log:<anchor>`) live in the same `work/<id>/thread.json` as code-review
-threads, so the **`wcc-review` skill** answers them with the same scripts
+threads, so the **`taskforge-review` skill** answers them with the same scripts
 (`list_pending.mjs` / `answer.mjs`). Tell that session *"You're the reviewer for `<id>`."* — it
 will see and answer page threads alongside hunk/finding threads. Never point two writers at the
 same id at once (see the CodeReviews README's lost-update rule).

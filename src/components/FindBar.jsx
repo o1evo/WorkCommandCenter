@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 // so the editor's native ⌘F can't search our content — this bar does. It drives
 // the browser's built-in window.find(), which selects + scrolls to each match
 // (only visible text, so it naturally searches the active tab). ↵ next, ⇧↵ prev,
-// esc closes. Tagged data-wcc-ui so the comment layer ignores clicks in it.
+// esc closes. Tagged data-taskforge-ui so the comment layer ignores clicks in it.
 export default function FindBar({ onClose }) {
   const [q, setQ] = useState('');
   const [miss, setMiss] = useState(false);
@@ -29,7 +29,7 @@ export default function FindBar({ onClose }) {
   }
 
   return (
-    <div className="findbar" data-wcc-ui>
+    <div className="findbar" data-taskforge-ui>
       <input ref={inputRef} className={`findbar-input ${miss ? 'miss' : ''}`} placeholder="Find on page…"
         value={q} onChange={onChange} onKeyDown={onKey} />
       {miss && q && <span className="findbar-status">no matches</span>}

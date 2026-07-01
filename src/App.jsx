@@ -6,7 +6,7 @@ import TasksManager from './components/TasksManager.jsx';
 import FindBar from './components/FindBar.jsx';
 import ReviewSidebar from './components/ReviewSidebar.jsx';
 import Thread from './components/Thread.jsx';
-import PageRuntime, { buildWcc } from './components/PageRuntime.jsx';
+import PageRuntime, { buildTaskForge } from './components/PageRuntime.jsx';
 import Markdown from './components/Markdown.jsx';
 import CopyButton from './components/CopyButton.jsx';
 import { applyTheme, pagePalette, readSavedTheme, THEME_LIST } from './themes.js';
@@ -15,7 +15,7 @@ import { applyTheme, pagePalette, readSavedTheme, THEME_LIST } from './themes.js
 applyTheme(readSavedTheme());
 
 const POLL_MS = 3000;
-const CURRENT_KEY = 'wcc.currentReview';
+const CURRENT_KEY = 'taskforge.currentReview';
 
 export default function App() {
   const [reviews, setReviews] = useState([]);
@@ -31,7 +31,7 @@ export default function App() {
   const [theme, setTheme] = useState(readSavedTheme); // color theme (chrome + pages)
   const mtimeRef = useRef(null);
 
-  // Cross-tab navigation handed to the Log page via wcc.onNavigate: switch tabs
+  // Cross-tab navigation handed to the Log page via taskforge.onNavigate: switch tabs
   // and (optionally) remember a DOM id for the target tab to scroll to once mounted.
   function goToView(targetView, domId) {
     setView(targetView || 'review');
@@ -70,7 +70,7 @@ export default function App() {
         try { if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).catch(() => {}); } catch { /* ignore */ }
         // VS Code webview: hand the text to the extension host, which always has
         // clipboard access. The webview shell forwards this to vscode.env.clipboard.
-        try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'wcc-clipboard-write', text }, '*'); } catch { /* ignore */ }
+        try { if (window.parent && window.parent !== window) window.parent.postMessage({ type: 'taskforge-clipboard-write', text }, '*'); } catch { /* ignore */ }
       }
     }
     document.addEventListener('keydown', onKey);
@@ -78,10 +78,10 @@ export default function App() {
   }, []);
 
   // Apply + persist the theme whenever it changes (chrome re-themes via CSS vars;
-  // pages re-theme via wcc.theme on their next render).
+  // pages re-theme via taskforge.theme on their next render).
   useEffect(() => {
     applyTheme(theme);
-    try { localStorage.setItem('wcc.theme', theme); } catch { /* ignore */ }
+    try { localStorage.setItem('taskforge.theme', theme); } catch { /* ignore */ }
   }, [theme]);
 
   // Load the list of reviews once. Restore the most-recently-selected task
@@ -220,7 +220,7 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-left">
-          <div className="brand">Work Command Center</div>
+          <div className="brand">TaskForge</div>
           <h1>{curMeta.name || review.title}</h1>
           <div className="review-meta">
             <code>{review.base} → {review.head}</code>
@@ -274,7 +274,7 @@ export default function App() {
         hasPage ? (
           <PageRuntime
             source={data._page.source}
-            wcc={buildWcc({
+            taskforge={buildTaskForge({
               id: currentId,
               data,
               onSend: send,
@@ -321,12 +321,12 @@ export default function App() {
 
 function ReviewView({ review, byFile, threads, hunks, onSend, onDelete, onDeleteThread, onDeleteAnchor, onSetAnchorState, jumpTarget, onJumped }) {
   const [sidebarOpen, setSidebarOpen] = useState(() => {
-    try { return localStorage.getItem('wcc.reviewSidebar') !== 'closed'; } catch { return true; }
+    try { return localStorage.getItem('taskforge.reviewSidebar') !== 'closed'; } catch { return true; }
   });
   function toggleSidebar() {
     setSidebarOpen((v) => {
       const next = !v;
-      try { localStorage.setItem('wcc.reviewSidebar', next ? 'open' : 'closed'); } catch {}
+      try { localStorage.setItem('taskforge.reviewSidebar', next ? 'open' : 'closed'); } catch {}
       return next;
     });
   }
@@ -340,7 +340,7 @@ function ReviewView({ review, byFile, threads, hunks, onSend, onDelete, onDelete
     setTimeout(() => el.classList.remove('jump-flash'), 1600);
   }
 
-  // When the Log page jumps here (wcc.openCode), the hunks have just mounted —
+  // When the Log page jumps here (taskforge.openCode), the hunks have just mounted —
   // wait a frame so the target element exists, then scroll to it and clear the request.
   useEffect(() => {
     if (!jumpTarget) return;

@@ -1,26 +1,26 @@
 #!/usr/bin/env node
-// WCC controller — a tiny, zero-dependency MCP (stdio) server that lets a Claude
-// session manage the Work Command Center dev server's lifecycle: status / start /
+// TaskForge controller — a tiny, zero-dependency MCP (stdio) server that lets a Claude
+// session manage the TaskForge dev server's lifecycle: status / start /
 // stop / restart / logs.
 //
 // Why an MCP instead of `npm run review` in a terminal: the dev server kept
-// dying with whatever terminal or agent launched it. This controller starts WCC
+// dying with whatever terminal or agent launched it. This controller starts TaskForge
 // **detached** (its own process group, unref'd), so the server OUTLIVES both this
 // MCP process and the Claude session — the MCP is a remote control, not the
 // parent. It also means "I changed server/api.mjs, restart it" is a single tool
-// call (wcc_restart) instead of a manual kill + relaunch.
+// call (taskforge_restart) instead of a manual kill + relaunch.
 //
 // Transport: newline-delimited JSON-RPC 2.0 on stdio (the MCP stdio convention).
 // stdout carries ONLY protocol messages; everything human-facing goes to stderr
 // or the server log. No external deps — the protocol surface we need is small.
 //
 // Register (user scope, available in every project):
-//   claude mcp add --scope user wcc -- node /Users/kassiter/code/CodeReviews/bin/wcc-mcp.mjs
+//   claude mcp add --scope user taskforge -- node /Users/kassiter/code/CodeReviews/bin/taskforge-mcp.mjs
 //
 // Env knobs (shared with vite.config.mjs / setup.mjs):
-//   WCC_PORT       default 7777   — the port WCC listens on
-//   WCC_HOST       default wcc.test — host shown in the opened URL
-//   WCC_AUTOSTART  default 1      — start WCC on MCP init if not already up (0 to disable)
+//   TASKFORGE_PORT       default 7777   — the port TaskForge listens on
+//   TASKFORGE_HOST       default taskforge.test — host shown in the opened URL
+//   TASKFORGE_AUTOSTART  default 1      — start TaskForge on MCP init if not already up (0 to disable)
 
 import { spawn, execFileSync } from 'node:child_process';
 import { createConnection } from 'node:net';
@@ -29,14 +29,14 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = Number(process.env.WCC_PORT) || 7777;
-const HOST = process.env.WCC_HOST || 'wcc.test';
+const PORT = Number(process.env.TASKFORGE_PORT) || 7777;
+const HOST = process.env.TASKFORGE_HOST || 'taskforge.test';
 const URL = `http://${HOST}:${PORT}`;
-const STATE_DIR = join(ROOT, '.wcc');
+const STATE_DIR = join(ROOT, '.taskforge');
 const LOG_FILE = join(STATE_DIR, 'server.log');
 const PID_FILE = join(STATE_DIR, 'server.pid');
 
-const log = (...a) => process.stderr.write(`[wcc-mcp] ${a.join(' ')}\n`);
+const log = (...a) => process.stderr.write(`[taskforge-mcp] ${a.join(' ')}\n`);
 
 // ── server lifecycle ────────────────────────────────────────────────────────
 
@@ -120,25 +120,25 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 // ── MCP tool surface ──────────────────────────────────────────────────────────
 
 const TOOLS = [
-  { name: 'wcc_status', description: `Report whether the Work Command Center (WCC) dev server is running, its URL (${URL}), listening PIDs, and the log path.`,
+  { name: 'taskforge_status', description: `Report whether the TaskForge dev server is running, its URL (${URL}), listening PIDs, and the log path.`,
     inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'wcc_start', description: 'Start the WCC dev server detached (survives this session). No-op if already running. Waits until it is accepting connections, then returns the URL.',
+  { name: 'taskforge_start', description: 'Start the TaskForge dev server detached (survives this session). No-op if already running. Waits until it is accepting connections, then returns the URL.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'wcc_stop', description: 'Stop the WCC dev server (SIGTERM the process listening on its port).',
+  { name: 'taskforge_stop', description: 'Stop the TaskForge dev server (SIGTERM the process listening on its port).',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'wcc_restart', description: 'Restart the WCC dev server — use after changing server-side code (server/*.mjs, vite.config.mjs) so the new code is loaded.',
+  { name: 'taskforge_restart', description: 'Restart the TaskForge dev server — use after changing server-side code (server/*.mjs, vite.config.mjs) so the new code is loaded.',
     inputSchema: { type: 'object', properties: {}, additionalProperties: false } },
-  { name: 'wcc_logs', description: 'Return the tail of the WCC server log (default 60 lines).',
+  { name: 'taskforge_logs', description: 'Return the tail of the TaskForge server log (default 60 lines).',
     inputSchema: { type: 'object', properties: { lines: { type: 'integer', minimum: 1, maximum: 1000 } }, additionalProperties: false } },
 ];
 
 async function runTool(name, args) {
   switch (name) {
-    case 'wcc_status': return status();
-    case 'wcc_start': return start();
-    case 'wcc_stop': return stop();
-    case 'wcc_restart': return restart();
-    case 'wcc_logs': return { log: tailLog(args && args.lines) };
+    case 'taskforge_status': return status();
+    case 'taskforge_start': return start();
+    case 'taskforge_stop': return stop();
+    case 'taskforge_restart': return restart();
+    case 'taskforge_logs': return { log: tailLog(args && args.lines) };
     default: throw new Error(`unknown tool: ${name}`);
   }
 }
@@ -165,10 +165,10 @@ async function handle(msg) {
         reply(id, {
           protocolVersion: (params && params.protocolVersion) || '2025-06-18',
           capabilities: { tools: {} },
-          serverInfo: { name: 'wcc', version: '0.1.0' },
+          serverInfo: { name: 'taskforge', version: '0.1.0' },
         });
-        // Streamline: bring WCC up on session start unless disabled.
-        if (process.env.WCC_AUTOSTART !== '0') {
+        // Streamline: bring TaskForge up on session start unless disabled.
+        if (process.env.TASKFORGE_AUTOSTART !== '0') {
           start().then((r) => log('autostart:', JSON.stringify(r))).catch((e) => log('autostart failed:', e.message));
         }
         return;
@@ -214,4 +214,4 @@ process.stdin.on('end', async () => {
   await Promise.allSettled([...pending]);
   process.exit(0);
 });
-log(`ready — controlling WCC on :${PORT} (${URL}); root=${ROOT}`);
+log(`ready — controlling TaskForge on :${PORT} (${URL}); root=${ROOT}`);

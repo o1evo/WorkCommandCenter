@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
 const args = parse(process.argv.slice(2));
-// Default root = the repo this skill lives in (…/.claude/skills/wcc-review/scripts → repo).
+// Default root = the repo this skill lives in (…/.claude/skills/taskforge-review/scripts → repo).
 // Works whether the skill is used in-repo or via a symlink in ~/.claude/skills (Node resolves it).
 const root = args.root || resolve(dirname(fileURLToPath(import.meta.url)), '../../../..');
 if (!args.id) die('Pass --id <review-id>.');

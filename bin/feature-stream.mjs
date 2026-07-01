@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 // feature-stream — a supervised-local entrypoint that turns a unit of work into
-// a feature worktree + GSD workstream + a live WCC mirror, then lets you drive
+// a feature worktree + GSD workstream + a live TaskForge mirror, then lets you drive
 // the GSD phases yourself and refresh/capture at each checkpoint.
 //
-//   GSD's .planning/ is the source of truth. WCC is a REFRESHED MIRROR — the
+//   GSD's .planning/ is the source of truth. TaskForge is a REFRESHED MIRROR — the
 //   page only updates when you re-run `start`/`refresh`. The mirror direction is
 //   a total re-projection from a single writer, so it can be stale but cannot
 //   drift; the human decisions flow back the one way, via capture-gsd.
@@ -14,14 +14,14 @@
 // the worktree for you.
 //
 // Subcommands:
-//   start      worktree + branch off a base, gsd workstream, WCC mirror
+//   start      worktree + branch off a base, gsd workstream, TaskForge mirror
 //   refresh    re-run the mirror for an existing worktree (the checkpoint)
 //   integrate  additive merge the stream branch back into a target branch
 //
 // Usage:
 //   node bin/feature-stream.mjs start --repo <path> --slug <short> \
-//        [--base <ref>] [--id <wcc-id>] [--title "..."] [--branch <name>]
-//   node bin/feature-stream.mjs refresh --id <wcc-id> --worktree <path> [--workstream <name>] [--base <ref>]
+//        [--base <ref>] [--id <taskforge-id>] [--title "..."] [--branch <name>]
+//   node bin/feature-stream.mjs refresh --id <taskforge-id> --worktree <path> [--workstream <name>] [--base <ref>]
 //   node bin/feature-stream.mjs integrate --worktree <path> --into <branch> [--keep-worktree]
 //
 // Rooting golden rule: GSD resolves .planning/ from cwd. This CLI is
@@ -34,7 +34,7 @@ import { resolve, dirname, basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = resolve(HERE, '..'); // the WCC checkout this CLI ships in
+const REPO = resolve(HERE, '..'); // the TaskForge checkout this CLI ships in
 
 function die(msg) { console.error(`feature-stream: ${msg}`); process.exit(1); }
 function slugify(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''); }
@@ -84,7 +84,7 @@ function planningExistsAt(ref, root) {
 
 // Create the GSD workstream inside the worktree. gsd-tools is part of gsd-core;
 // when absent we warn and leave a manual instruction rather than failing — the
-// worktree + WCC page are still useful.
+// worktree + TaskForge page are still useful.
 function createWorkstream(worktree, slug) {
   const hasGsd = (() => { try { execFileSync('gsd-tools', ['--version'], { stdio: 'ignore' }); return true; } catch { return false; } })();
   if (!hasGsd) {
@@ -124,7 +124,7 @@ function cmdStart(args) {
 
   const branch = (args.branch && args.branch !== true) ? args.branch : `feature/${slug}`;
   const worktree = join(dirname(root), `${repoName}-${slug}`);
-  const wccId = slugify(args.id && args.id !== true ? args.id : slug);
+  const taskforgeId = slugify(args.id && args.id !== true ? args.id : slug);
   const title = (args.title && args.title !== true) ? args.title : `${repoName} · ${slug}`;
 
   console.log(`feature-stream start`);
@@ -133,7 +133,7 @@ function cmdStart(args) {
   console.log(`  branch:    ${branch}`);
   console.log(`  worktree:  ${worktree}`);
   console.log(`  workstream:${slug}`);
-  console.log(`  wcc id:    ${wccId}\n`);
+  console.log(`  taskforge id:    ${taskforgeId}\n`);
 
   // 1. Worktree + branch — idempotent.
   if (existsSync(worktree)) {
@@ -150,24 +150,24 @@ function cmdStart(args) {
   // 2. GSD workstream (soft-skips without gsd-tools).
   createWorkstream(worktree, slug);
 
-  // 3. WCC mirror.
+  // 3. TaskForge mirror.
   importGsd([
     '--planning', join(worktree, '.planning'),
     '--workstream', slug,
-    '--id', wccId,
+    '--id', taskforgeId,
     '--title', title,
     '--repo', worktree,
     '--base', base,
     '--head', 'WORKTREE',
   ]);
 
-  printLoop(worktree, wccId, slug);
+  printLoop(worktree, taskforgeId, slug);
 }
 
 // ── refresh (the checkpoint mirror) ───────────────────────────────────────────
 function cmdRefresh(args) {
   if (!args.worktree) die('refresh needs --worktree <path>');
-  if (!args.id) die('refresh needs --id <wcc-id>');
+  if (!args.id) die('refresh needs --id <taskforge-id>');
   const worktree = resolve(args.worktree);
   if (!existsSync(join(worktree, '.planning'))) die(`no .planning/ under ${worktree}`);
   const base = (args.base && args.base !== true) ? args.base : 'main';
@@ -175,7 +175,7 @@ function cmdRefresh(args) {
     '--repo', worktree, '--base', base, '--head', 'WORKTREE'];
   if (args.workstream && args.workstream !== true) extra.push('--workstream', String(args.workstream));
   importGsd(extra);
-  console.log(`\n✓ mirror refreshed for ${args.id}. Review in WCC; mark outcomes in threads, then capture:`);
+  console.log(`\n✓ mirror refreshed for ${args.id}. Review in TaskForge; mark outcomes in threads, then capture:`);
   console.log(`  node bin/capture-gsd.mjs --id ${args.id} --planning ${join(worktree, '.planning')}`);
 }
 
@@ -204,23 +204,23 @@ function cmdIntegrate(args) {
   }
 }
 
-function printLoop(worktree, wccId, slug) {
+function printLoop(worktree, taskforgeId, slug) {
   console.log(`\n${'─'.repeat(64)}`);
-  console.log(`Supervised loop — you drive GSD; WCC mirrors at each checkpoint:`);
+  console.log(`Supervised loop — you drive GSD; TaskForge mirrors at each checkpoint:`);
   console.log(`
   1. Open a session ROOTED INSIDE the worktree (golden rule):
        ${worktree}
   2. Run the GSD phase loop. It stops at a fork / phase boundary / failed gate —
      that stop is your checkpoint.
-  3. At each checkpoint, refresh the WCC mirror:
-       node bin/feature-stream.mjs refresh --id ${wccId} --worktree ${worktree} --workstream ${slug}
-     Review on WCC (open id "${wccId}"); discuss in threads.
+  3. At each checkpoint, refresh the TaskForge mirror:
+       node bin/feature-stream.mjs refresh --id ${taskforgeId} --worktree ${worktree} --workstream ${slug}
+     Review on TaskForge (open id "${taskforgeId}"); discuss in threads.
   4. Mark outcomes in threads with **Decision:** / **Open question:** / **Blocker:**, then capture back to GSD:
-       node bin/capture-gsd.mjs --id ${wccId} --planning ${join(worktree, '.planning')}
+       node bin/capture-gsd.mjs --id ${taskforgeId} --planning ${join(worktree, '.planning')}
   5. Answer the fork, resume the loop. At milestone-done, integrate:
        node bin/feature-stream.mjs integrate --worktree ${worktree} --into <target-branch>
 `);
-  console.log(`Start the app if it isn't up:  npm run review   →  open id "${wccId}"`);
+  console.log(`Start the app if it isn't up:  npm run review   →  open id "${taskforgeId}"`);
 }
 
 const [, , cmd, ...rest] = process.argv;
