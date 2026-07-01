@@ -10,14 +10,14 @@
 const CTX = 40; // chars of prefix/suffix context kept for disambiguation
 
 // All text nodes under `root`, in document order — but skip the comment layer's
-// own UI (anything under [data-wcc-ui]) so highlights/popover text never pollute
+// own UI (anything under [data-taskforge-ui]) so highlights/popover text never pollute
 // the coordinate space we anchor against.
 function textNodes(root) {
   const out = [];
   const walk = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(n) {
       for (let p = n.parentElement; p && p !== root.parentElement; p = p.parentElement) {
-        if (p.hasAttribute && p.hasAttribute('data-wcc-ui')) return NodeFilter.FILTER_REJECT;
+        if (p.hasAttribute && p.hasAttribute('data-taskforge-ui')) return NodeFilter.FILTER_REJECT;
       }
       return NodeFilter.FILTER_ACCEPT;
     },

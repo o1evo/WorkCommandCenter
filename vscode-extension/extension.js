@@ -1,10 +1,10 @@
-// Work Command Center — VS Code extension.
+// TaskForge — VS Code extension.
 //
-// Renders WCC (a local Vite/React app on 127.0.0.1:<port>) inside a webview
+// Renders TaskForge (a local Vite/React app on 127.0.0.1:<port>) inside a webview
 // panel. When the server isn't up, the panel shows a Start button instead of a
-// blank iframe. Starting reuses the same convention as bin/wcc-mcp.mjs: the dev
+// blank iframe. Starting reuses the same convention as bin/taskforge-mcp.mjs: the dev
 // server is spawned DETACHED so it outlives this VS Code window, and its pid/log
-// land in <root>/.wcc — so the extension and the MCP control the same server.
+// land in <root>/.taskforge — so the extension and the MCP control the same server.
 
 const vscode = require('vscode');
 const { spawn, execFile } = require('node:child_process');
@@ -15,7 +15,7 @@ const path = require('node:path');
 // ── config ───────────────────────────────────────────────────────────────────
 
 function cfg() {
-  const c = vscode.workspace.getConfiguration('wcc');
+  const c = vscode.workspace.getConfiguration('taskforge');
   return {
     rootPath: (c.get('rootPath') || '').trim(),
     port: Number(c.get('port')) || 7777,
@@ -25,32 +25,32 @@ function cfg() {
 
 // The URL rendered in the webview. Host is configurable (e.g. an /etc/hosts
 // alias); the probe below always uses loopback since that's where it binds.
-function wccUrl() {
+function taskforgeUrl() {
   const { host, port } = cfg();
   return `http://${host}:${port}`;
 }
 
-// Locate the WCC repo: explicit config → an open workspace folder that looks
-// like WCC → the extension's own parent (it ships inside the repo).
+// Locate the TaskForge repo: explicit config → an open workspace folder that looks
+// like TaskForge → the extension's own parent (it ships inside the repo).
 function resolveRoot() {
   const { rootPath } = cfg();
-  if (rootPath && looksLikeWcc(rootPath)) return rootPath;
+  if (rootPath && looksLikeTaskForge(rootPath)) return rootPath;
   for (const f of vscode.workspace.workspaceFolders || []) {
-    if (looksLikeWcc(f.uri.fsPath)) return f.uri.fsPath;
+    if (looksLikeTaskForge(f.uri.fsPath)) return f.uri.fsPath;
   }
   const parent = path.resolve(__dirname, '..');
-  if (looksLikeWcc(parent)) return parent;
+  if (looksLikeTaskForge(parent)) return parent;
   return rootPath || parent; // best effort
 }
 
-function looksLikeWcc(dir) {
+function looksLikeTaskForge(dir) {
   try {
     return fs.existsSync(path.join(dir, 'vite.config.mjs')) &&
            fs.existsSync(path.join(dir, 'package.json'));
   } catch { return false; }
 }
 
-// ── server lifecycle (mirrors bin/wcc-mcp.mjs) ────────────────────────────────
+// ── server lifecycle (mirrors bin/taskforge-mcp.mjs) ────────────────────────────────
 
 function isUp(timeoutMs = 600) {
   const { port } = cfg();
@@ -94,10 +94,10 @@ const delay = (ms) => new Promise((r) => setTimeout(r, ms));
 async function startServer() {
   if (await isUp()) return { started: false, alreadyRunning: true };
   const root = resolveRoot();
-  if (!looksLikeWcc(root)) {
-    throw new Error(`Could not find the WCC repo. Set "wcc.rootPath" in settings (looked at: ${root}).`);
+  if (!looksLikeTaskForge(root)) {
+    throw new Error(`Could not find the TaskForge repo. Set "taskforge.rootPath" in settings (looked at: ${root}).`);
   }
-  const stateDir = path.join(root, '.wcc');
+  const stateDir = path.join(root, '.taskforge');
   fs.mkdirSync(stateDir, { recursive: true });
   const fd = fs.openSync(path.join(stateDir, 'server.log'), 'a');
   const { port } = cfg();
@@ -117,7 +117,7 @@ async function startServer() {
       detached: true,
       stdio: ['ignore', fd, fd],
       windowsHide: true,
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', WCC_PORT: String(port) },
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1', TASKFORGE_PORT: String(port) },
     });
   } else {
     // POSIX (or Windows without a local vite): `npm run review`. On Windows npm
@@ -126,7 +126,7 @@ async function startServer() {
       cwd: root,
       detached: true,
       stdio: ['ignore', fd, fd],
-      env: { ...process.env, WCC_PORT: String(port) },
+      env: { ...process.env, TASKFORGE_PORT: String(port) },
       shell: isWin,
       windowsHide: true,
     });
@@ -138,7 +138,7 @@ async function startServer() {
     await delay(300);
     if (await isUp()) return { started: true };
   }
-  throw new Error(`WCC did not come up on :${cfg().port} within 20s — check ${path.join(stateDir, 'server.log')}.`);
+  throw new Error(`TaskForge did not come up on :${cfg().port} within 20s — check ${path.join(stateDir, 'server.log')}.`);
 }
 
 async function stopServer() {
@@ -160,7 +160,7 @@ async function restartServer() {
 
 // The editor panel renders the app (full width). The activity-bar icon is just a
 // launcher: clicking it reveals a tiny view that immediately opens this panel and
-// collapses the sidebar — so the icon behaves like an "open WCC in editor" button.
+// collapses the sidebar — so the icon behaves like an "open TaskForge in editor" button.
 let panel = null;          // vscode.WebviewPanel | null
 let pollTimer = null;
 let lastUp = null;
@@ -168,7 +168,7 @@ let lastUp = null;
 function escAttr(s) { return String(s).replace(/"/g, '&quot;'); }
 
 function runningHtml(url) {
-  // CSP must explicitly allow framing the WCC origin. default-src 'none' keeps
+  // CSP must explicitly allow framing the TaskForge origin. default-src 'none' keeps
   // everything else locked down; the iframe gets its own permissions via sandbox.
   //
   // `allow` delegates Permissions-Policy features to the cross-origin (127.0.0.1)
@@ -194,7 +194,7 @@ function runningHtml(url) {
     const vscode = acquireVsCodeApi();
     window.addEventListener('message', (e) => {
       const m = e.data;
-      if (m && m.type === 'wcc-clipboard-write' && typeof m.text === 'string') {
+      if (m && m.type === 'taskforge-clipboard-write' && typeof m.text === 'string') {
         vscode.postMessage({ type: 'clipboard-write', text: m.text });
       }
     });
@@ -228,10 +228,10 @@ function downHtml(url, starting) {
 </style></head>
 <body>
   <div class="card">
-    <h1>WCC isn't running</h1>
+    <h1>TaskForge isn't running</h1>
     <p>Expected at <code>${escAttr(url)}</code>.</p>
     <button id="start" ${starting ? 'disabled' : ''}>
-      ${starting ? '<span class="spin"></span>Starting…' : '▶ Start WCC'}
+      ${starting ? '<span class="spin"></span>Starting…' : '▶ Start TaskForge'}
     </button>
   </div>
   <script>
@@ -251,7 +251,7 @@ function attach(webview) {
   webview.onDidReceiveMessage(async (msg) => {
     if (msg && msg.type === 'start') {
       try { await render(true); await startServer(); }
-      catch (e) { vscode.window.showErrorMessage(`WCC: ${e.message}`); }
+      catch (e) { vscode.window.showErrorMessage(`TaskForge: ${e.message}`); }
       await render(false);
     } else if (msg && msg.type === 'clipboard-write' && typeof msg.text === 'string') {
       // ⌘C relayed up from the embedded app — the extension host can always write.
@@ -265,7 +265,7 @@ async function render(starting) {
   if (!panel) return;
   const up = await isUp();
   lastUp = up;
-  const url = wccUrl();
+  const url = taskforgeUrl();
   panel.webview.html = up ? runningHtml(url) : downHtml(url, !!starting);
 }
 
@@ -275,7 +275,7 @@ async function render(starting) {
 async function reload() {
   if (!panel) { await openPanel(); return; }
   if (!(await isUp())) { await render(false); return; }
-  const url = wccUrl();
+  const url = taskforgeUrl();
   const busted = url + (url.includes('?') ? '&' : '?') + 'r=' + Date.now();
   panel.webview.html = '<!DOCTYPE html><html><body></body></html>';
   panel.webview.html = runningHtml(busted);
@@ -296,7 +296,7 @@ function stopPolling() {
 
 async function openPanel() {
   if (panel) { panel.reveal(vscode.ViewColumn.Active); return; }
-  panel = vscode.window.createWebviewPanel('wcc', 'Work Command Center', vscode.ViewColumn.Active, {
+  panel = vscode.window.createWebviewPanel('taskforge', 'TaskForge', vscode.ViewColumn.Active, {
     enableScripts: true,
     retainContextWhenHidden: true,
   });
@@ -308,7 +308,7 @@ async function openPanel() {
 
 // The activity-bar view is a launcher only: as soon as it becomes visible
 // (icon clicked), open the editor panel and collapse the sidebar, so the icon
-// acts like an "open WCC in editor" button rather than hosting the app itself.
+// acts like an "open TaskForge in editor" button rather than hosting the app itself.
 const sidebarProvider = {
   resolveWebviewView(webviewView) {
     webviewView.webview.options = { enableScripts: false };
@@ -316,7 +316,7 @@ const sidebarProvider = {
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline';">
 <style>body{font-family:var(--vscode-font-family);color:var(--vscode-descriptionForeground);
   padding:1rem;font-size:.85rem;line-height:1.5}</style></head>
-<body>Opening Work Command Center in the editor…</body></html>`;
+<body>Opening TaskForge in the editor…</body></html>`;
     const launch = () => {
       if (!webviewView.visible) return;
       openPanel();
@@ -335,8 +335,8 @@ let statusItem = null;
 async function refreshStatusBar() {
   if (!statusItem) return;
   const up = await isUp();
-  statusItem.text = up ? '$(server) WCC' : '$(debug-disconnect) WCC';
-  statusItem.tooltip = up ? `WCC running — ${wccUrl()} (click to open)` : 'WCC stopped — click to open / start';
+  statusItem.text = up ? '$(server) TaskForge' : '$(debug-disconnect) TaskForge';
+  statusItem.tooltip = up ? `TaskForge running — ${taskforgeUrl()} (click to open)` : 'TaskForge stopped — click to open / start';
   statusItem.show();
 }
 
@@ -344,7 +344,7 @@ async function refreshStatusBar() {
 
 function activate(context) {
   statusItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-  statusItem.command = 'wcc.open';
+  statusItem.command = 'taskforge.open';
   context.subscriptions.push(statusItem);
 
   const sbTimer = setInterval(refreshStatusBar, 4000);
@@ -352,32 +352,32 @@ function activate(context) {
   refreshStatusBar();
 
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider('wcc.sidebar', sidebarProvider),
-    vscode.commands.registerCommand('wcc.open', () => openPanel()),
-    vscode.commands.registerCommand('wcc.start', async () => {
+    vscode.window.registerWebviewViewProvider('taskforge.sidebar', sidebarProvider),
+    vscode.commands.registerCommand('taskforge.open', () => openPanel()),
+    vscode.commands.registerCommand('taskforge.start', async () => {
       try {
         const r = await startServer();
-        vscode.window.showInformationMessage(r.alreadyRunning ? 'WCC already running.' : 'WCC started.');
-      } catch (e) { vscode.window.showErrorMessage(`WCC: ${e.message}`); }
+        vscode.window.showInformationMessage(r.alreadyRunning ? 'TaskForge already running.' : 'TaskForge started.');
+      } catch (e) { vscode.window.showErrorMessage(`TaskForge: ${e.message}`); }
       await refreshStatusBar();
       if (panel) await render(false);
     }),
-    vscode.commands.registerCommand('wcc.stop', async () => {
+    vscode.commands.registerCommand('taskforge.stop', async () => {
       const r = await stopServer();
-      vscode.window.showInformationMessage(r.stopped ? `WCC stopped (pid ${r.killed.join(', ')}).` : 'WCC was not running.');
+      vscode.window.showInformationMessage(r.stopped ? `TaskForge stopped (pid ${r.killed.join(', ')}).` : 'TaskForge was not running.');
       await refreshStatusBar();
       if (panel) await render(false);
     }),
-    vscode.commands.registerCommand('wcc.restart', async () => {
-      try { await restartServer(); vscode.window.showInformationMessage('WCC restarted.'); }
-      catch (e) { vscode.window.showErrorMessage(`WCC: ${e.message}`); }
+    vscode.commands.registerCommand('taskforge.restart', async () => {
+      try { await restartServer(); vscode.window.showInformationMessage('TaskForge restarted.'); }
+      catch (e) { vscode.window.showErrorMessage(`TaskForge: ${e.message}`); }
       await refreshStatusBar();
       if (panel) await render(false);
     }),
-    vscode.commands.registerCommand('wcc.openExternal', () => {
-      vscode.env.openExternal(vscode.Uri.parse(wccUrl()));
+    vscode.commands.registerCommand('taskforge.openExternal', () => {
+      vscode.env.openExternal(vscode.Uri.parse(taskforgeUrl()));
     }),
-    vscode.commands.registerCommand('wcc.refresh', () => reload()),
+    vscode.commands.registerCommand('taskforge.refresh', () => reload()),
   );
 }
 

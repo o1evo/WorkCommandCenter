@@ -1,6 +1,6 @@
-# Releasing WCC
+# Releasing TaskForge
 
-Releases are cut on the **public repo** (`o1evo/WorkCommandCenter` — the `upstream`
+Releases are cut on the **public repo** (`o1evo/TaskForge` — the `upstream`
 remote). The Finario fork (`finarioapp`, the `origin` remote) tracks it and stacks
 the Finario-only skills (`feature-stream-wtf*`) on top; it is **never** tagged for
 public consumption.
@@ -45,5 +45,5 @@ code --install-extension work-command-center-vscode-X.Y.Z.vsix
 - **Open VSX** (`ovsx publish`) — free, no Microsoft account, reaches Cursor /
   VSCodium too.
 - **VS Code Marketplace** (`vsce publish`) — widest reach; needs a registered
-  Azure DevOps publisher (the current `publisher: "wcc"` must become a real
+  Azure DevOps publisher (the current `publisher: "taskforge"` must become a real
   registered id) and the `repository` field that's now set.

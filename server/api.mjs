@@ -129,9 +129,9 @@ export function createApi(workDir) {
   }
 
   // Per-page UI metadata (display name override, hidden, starred, project) lives in
-  // a single WCC-owned, gitignored file — NOT in thread.json (which is the proprietary
+  // a single TaskForge-owned, gitignored file — NOT in thread.json (which is the proprietary
   // review data). Keyed by review id. Absent file → no metadata, everything default.
-  const metaPath = join(workDir, '..', '.wcc', 'pages.json');
+  const metaPath = join(workDir, '..', '.taskforge', 'pages.json');
   const META_FIELDS = ['name', 'hidden', 'starred', 'project', 'tags', 'order'];
   // The file holds both the per-page metadata (`pages`) and the workspace-wide tag
   // catalog (`tags`: [{ name, color }]). Per-page `tags` are just names referencing
@@ -142,7 +142,7 @@ export function createApi(workDir) {
   function loadMeta() { return loadDoc().pages || {}; }
   function loadTags() { const t = loadDoc().tags; return Array.isArray(t) ? t : []; }
   function writeDoc(doc) {
-    try { mkdirSync(join(workDir, '..', '.wcc'), { recursive: true }); } catch { /* exists */ }
+    try { mkdirSync(join(workDir, '..', '.taskforge'), { recursive: true }); } catch { /* exists */ }
     const out = {};
     if (Array.isArray(doc.tags) && doc.tags.length) out.tags = doc.tags; // catalog first for readability
     out.pages = doc.pages || {};
@@ -197,7 +197,7 @@ export function createApi(workDir) {
       }
 
       // POST /api/page-meta { id, patch: { name?, hidden?, starred?, project?, tags?, order? } }
-      // Update a page's UI metadata in .wcc/pages.json. Falsy/empty values clear the
+      // Update a page's UI metadata in .taskforge/pages.json. Falsy/empty values clear the
       // field (and an emptied page is dropped) so the file stays lean.
       if (path === '/api/page-meta' && req.method === 'POST') {
         const body = await readBody(req);

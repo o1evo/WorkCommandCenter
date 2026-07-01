@@ -1,30 +1,30 @@
-# Work Command Center (WCC) — Claude operating guide
+# TaskForge — Claude operating guide
 
 ## First-run setup (do this once, before anything else)
 
-If a user asks to **"use WCC" / "set up the Work Command Center" / "start tracking work"** and
+If a user asks to **"use TaskForge" / "set up the TaskForge" / "start tracking work"** and
 the app isn't set up yet, run these from this repo's root:
 
 ```bash
 npm run setup          # installs deps, makes the skills global, and offers an /etc/hosts alias
-npm run review         # then start the app → http://127.0.0.1:7777  (or http://wcc:7777)
+npm run review         # then start the app → http://127.0.0.1:7777  (or http://taskforge:7777)
 ```
 
 `npm run setup` does three things: `npm install` (deps), `node bin/install-skill.mjs` (symlink
 the two skills into `~/.claude/skills/` so they work from ANY repo), and an **interactive prompt**
-asking whether to add `127.0.0.1 wcc` to `/etc/hosts` (sudo; decline-able). The listen port
-and alias are configurable via `WCC_PORT` (default `7777`) and `WCC_HOST` (default `wcc`) —
+asking whether to add `127.0.0.1 taskforge` to `/etc/hosts` (sudo; decline-able). The listen port
+and alias are configurable via `TASKFORGE_PORT` (default `7777`) and `TASKFORGE_HOST` (default `taskforge`) —
 both `setup` and `review` honor them. If you only want the skills global, `npm run install-skill`
 alone still works.
 
 - `npm install` is required to run the app (`npm run review` → http://127.0.0.1:7777).
-- `npm run install-skill` makes `wcc-worklog` and `wcc-review` **global**. This is
+- `npm run install-skill` makes `taskforge-worklog` and `taskforge-review` **global**. This is
   **required for the normal cross-project workflow** (importing diffs from / logging work for
   *other* repos): the skills ship as *project-level* skills, so without this step Claude only
   discovers them while running inside **this** repo. Flags: `--copy` (copy instead of symlink, if
   the clone may move), `--force` (replace an existing skill of the same name).
-- After install, from any repo the user can say *"new task" / "start tracking" / "use WCC"* and
-  the `wcc-worklog` / `wcc-review` skills take over. Import a change with
+- After install, from any repo the user can say *"new task" / "start tracking" / "use TaskForge"* and
+  the `taskforge-worklog` / `taskforge-review` skills take over. Import a change with
   `node bin/import.mjs --repo <path> --base main --head WORKTREE --id <slug> --title "..."`.
 
 ---

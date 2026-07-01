@@ -1,12 +1,12 @@
 ---
-name: wcc-release
-description: Cut a versioned release of the Work Command Center (WCC) — bump the shared app + VS Code extension version, update the changelog, tag on the public repo, and let CI build and publish the .vsix. Use when the user says "release WCC", "cut a release", "tag a version", "publish the extension", "ship a new WCC version", or invokes /wcc-release. The app and extension share one version line; a single vX.Y.Z tag releases both via .github/workflows/release.yml.
+name: taskforge-release
+description: Cut a versioned release of the TaskForge — bump the shared app + VS Code extension version, update the changelog, tag on the public repo, and let CI build and publish the .vsix. Use when the user says "release TaskForge", "cut a release", "tag a version", "publish the extension", "ship a new TaskForge version", or invokes /taskforge-release. The app and extension share one version line; a single vX.Y.Z tag releases both via .github/workflows/release.yml.
 argument-hint: "[patch|minor|major | explicit vX.Y.Z]   (default: ask)"
 ---
 
-# wcc-release — cut a WCC release
+# taskforge-release — cut a TaskForge release
 
-Releases are cut on the **canonical public repo** (`o1evo/WorkCommandCenter`, the
+Releases are cut on the **canonical public repo** (`o1evo/TaskForge`, the
 `upstream` remote). The app and the VS Code extension **share one version line** —
 a single `vX.Y.Z` tag releases both. SemVer; stay in `0.x` while pre-stable.
 
@@ -72,4 +72,4 @@ with the `.vsix`. Users install with
 - Keep the two `version` fields equal; the guard exists to catch a forgotten bump.
 - Wider distribution (Open VSX, VS Code Marketplace) is deferred — see the tail
   of [RELEASING.md](../../../RELEASING.md). Marketplace needs a real registered
-  `publisher` (currently `"wcc"`).
+  `publisher` (currently `"taskforge"`).

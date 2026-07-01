@@ -1,21 +1,21 @@
 ---
 name: gsd-bridge
-description: Bridge a GSD (gsd-core) .planning tree to the Work Command Center — render its phases/state/UAT into a WCC task (Log + Code Review + QA tabs), and capture resolved review threads back into GSD's planning artifacts. Use when a task is tracked in a GSD .planning/ tree, when the user says "import gsd", "gsd planning", "show the plan in WCC", "capture decisions back to gsd", "WCC-CAPTURES", or mentions a .planning workstream/phase. Two CLIs: import-gsd (read) and capture-gsd (writeback).
+description: Bridge a GSD (gsd-core) .planning tree to the TaskForge — render its phases/state/UAT into a TaskForge task (Log + Code Review + QA tabs), and capture resolved review threads back into GSD's planning artifacts. Use when a task is tracked in a GSD .planning/ tree, when the user says "import gsd", "gsd planning", "show the plan in TaskForge", "capture decisions back to gsd", "TaskForge-CAPTURES", or mentions a .planning workstream/phase. Two CLIs: import-gsd (read) and capture-gsd (writeback).
 ---
 
-# GSD ↔ WCC bridge
+# GSD ↔ TaskForge bridge
 
 [GSD / gsd-core](https://github.com/open-gsd/gsd-core) is a phase-based process engine: it writes
 plain-Markdown artifacts under `.planning/` (STATE, ROADMAP, per-phase PLAN/SUMMARY/UAT, PROJECT
-Key Decisions) but has **no human-facing surface**. WCC is that surface. This skill drives the two
+Key Decisions) but has **no human-facing surface**. TaskForge is that surface. This skill drives the two
 CLIs that connect them — `bin/import-gsd.mjs` (read) and `bin/capture-gsd.mjs` (writeback). GSD
-stays the **single writer** of its own files; WCC never edits them directly.
+stays the **single writer** of its own files; TaskForge never edits them directly.
 
-Run everything from the WCC repo root.
+Run everything from the TaskForge repo root.
 
-## 1. Import a planning tree → WCC (read)
+## 1. Import a planning tree → TaskForge (read)
 
-Render a `.planning/` tree (or one workstream of it) into a WCC task `work/<id>/`:
+Render a `.planning/` tree (or one workstream of it) into a TaskForge task `work/<id>/`:
 
 ```bash
 npm run import-gsd -- --planning <path/to/.planning-or-project-root> [--workstream <name>] \
@@ -39,11 +39,11 @@ npm run import-gsd -- --planning <path/to/.planning-or-project-root> [--workstre
 
 Then start the app (`npm run review`) and open `<id>`.
 
-## 2. Discuss — in WCC
+## 2. Discuss — in TaskForge
 
 Each phase card has its own discussion thread keyed `log:phase:<phase-dir>`; the engineer can also
 select any text to drop a free comment, and the Code Review tab has hunk/line threads. A reviewer
-session answers via the normal WCC thread bridge (see `wcc-review`).
+session answers via the normal TaskForge thread bridge (see `taskforge-review`).
 
 **The capture contract (load-bearing):** when a thread reaches an outcome, the reviewer ends a
 message with a marked line — this is the *only* signal capture acts on, so distillation stays a
@@ -61,17 +61,17 @@ Keep it to a single distilled line — it lands verbatim in a GSD artifact.
 npm run capture-gsd -- --id <id> --planning <path> [--workstream <name>] [--dry-run]
 ```
 
-- Appends each marked outcome to a **WCC-owned** `.planning/WCC-CAPTURES.md` handoff file
+- Appends each marked outcome to a **TaskForge-owned** `.planning/TaskForge-CAPTURES.md` handoff file
   (append-only, idempotent — stamps `captured` on the thread message and fingerprints each entry).
-  WCC never edits GSD's reconstructable files (e.g. STATE.md), so `gsd-tools state sync` can't clobber it.
+  TaskForge never edits GSD's reconstructable files (e.g. STATE.md), so `gsd-tools state sync` can't clobber it.
 - **Phase-scoped routing:** an outcome from a `log:phase:<dir>` thread targets *that phase's*
   artifact (`phases/<dir>/<NN>-CONTEXT.md`); general / code-review / free-comment threads route to
   the global store (Decision → PROJECT Key Decisions, Open question → todos, Blocker → STATE).
 - Always `--dry-run` first to preview targets.
 
-**Ingest (GSD side):** for each `[ ]` entry in `WCC-CAPTURES.md`, fold it into the listed target
+**Ingest (GSD side):** for each `[ ]` entry in `TaskForge-CAPTURES.md`, fold it into the listed target
 and tick `[x]`. GSD's `/gsd-capture` (or a reviewer session) does this — it is *not* automatic, by
-design: WCC produces the handoff, GSD consumes it on its own terms.
+design: TaskForge produces the handoff, GSD consumes it on its own terms.
 
 ## Verify
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// Reverse install-skill.mjs: remove WCC's global skills from ~/.claude/skills, and
-// print how to undo the optional bits setup added (the wcc MCP, the /etc/hosts alias).
-// Run via `npm run uninstall-skill`, or just ask Claude to "uninstall WCC".
+// Reverse install-skill.mjs: remove TaskForge's global skills from ~/.claude/skills, and
+// print how to undo the optional bits setup added (the taskforge MCP, the /etc/hosts alias).
+// Run via `npm run uninstall-skill`, or just ask Claude to "uninstall TaskForge".
 //
 //   node bin/uninstall.mjs           # remove the symlinks we created (safe)
 //   node bin/uninstall.mjs --force   # ALSO remove copied skill dirs of the same name
@@ -60,8 +60,8 @@ console.log(`\nSkills: ${removed} removed${skipped ? `, ${skipped} left alone` :
 
 // The optional extras setup may have added — we don't touch sudo or your Claude
 // config, so undo these yourself if you used them:
-const HOST_ALIAS = process.env.WCC_HOST || 'wcc';
+const HOST_ALIAS = process.env.TASKFORGE_HOST || 'taskforge';
 console.log('\nOptional extras to remove yourself:');
-console.log('  • wcc MCP (if you registered it):     claude mcp remove wcc');
+console.log('  • taskforge MCP (if you registered it):     claude mcp remove taskforge');
 console.log(`  • /etc/hosts alias (if you added it): remove the "127.0.0.1 ${HOST_ALIAS}" line (needs sudo)`);
-console.log(`  • the app + its runtime state (.wcc/): just delete this folder — ${ROOT}`);
+console.log(`  • the app + its runtime state (.taskforge/): just delete this folder — ${ROOT}`);

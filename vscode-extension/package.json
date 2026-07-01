@@ -1,13 +1,13 @@
 {
   "name": "work-command-center-vscode",
-  "displayName": "Work Command Center",
-  "description": "Render the Work Command Center (WCC) inside VS Code, with a one-click Start button when the server isn't running.",
+  "displayName": "TaskForge",
+  "description": "Render the TaskForge inside VS Code, with a one-click Start button when the server isn't running.",
   "version": "0.1.0",
-  "publisher": "wcc",
+  "publisher": "taskforge",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/o1evo/WorkCommandCenter.git",
+    "url": "https://github.com/o1evo/TaskForge.git",
     "directory": "vscode-extension"
   },
   "engines": {
@@ -24,77 +24,77 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "wcc",
-          "title": "Work Command Center",
-          "icon": "media/wcc.svg"
+          "id": "taskforge",
+          "title": "TaskForge",
+          "icon": "media/taskforge.svg"
         }
       ]
     },
     "views": {
-      "wcc": [
+      "taskforge": [
         {
-          "id": "wcc.sidebar",
-          "name": "Work Command Center",
+          "id": "taskforge.sidebar",
+          "name": "TaskForge",
           "type": "webview"
         }
       ]
     },
     "commands": [
       {
-        "command": "wcc.open",
-        "title": "WCC: Open",
-        "category": "Work Command Center"
+        "command": "taskforge.open",
+        "title": "TaskForge: Open",
+        "category": "TaskForge"
       },
       {
-        "command": "wcc.start",
-        "title": "WCC: Start server",
-        "category": "Work Command Center"
+        "command": "taskforge.start",
+        "title": "TaskForge: Start server",
+        "category": "TaskForge"
       },
       {
-        "command": "wcc.stop",
-        "title": "WCC: Stop server",
-        "category": "Work Command Center"
+        "command": "taskforge.stop",
+        "title": "TaskForge: Stop server",
+        "category": "TaskForge"
       },
       {
-        "command": "wcc.restart",
-        "title": "WCC: Restart server",
-        "category": "Work Command Center"
+        "command": "taskforge.restart",
+        "title": "TaskForge: Restart server",
+        "category": "TaskForge"
       },
       {
-        "command": "wcc.openExternal",
-        "title": "WCC: Open in browser",
-        "category": "Work Command Center"
+        "command": "taskforge.openExternal",
+        "title": "TaskForge: Open in browser",
+        "category": "TaskForge"
       },
       {
-        "command": "wcc.refresh",
-        "title": "WCC: Refresh",
-        "category": "Work Command Center"
+        "command": "taskforge.refresh",
+        "title": "TaskForge: Refresh",
+        "category": "TaskForge"
       }
     ],
     "keybindings": [
       {
-        "command": "wcc.refresh",
+        "command": "taskforge.refresh",
         "key": "f5",
-        "when": "activeWebviewPanelId == 'wcc'"
+        "when": "activeWebviewPanelId == 'taskforge'"
       }
     ],
     "configuration": {
-      "title": "Work Command Center",
+      "title": "TaskForge",
       "properties": {
-        "wcc.rootPath": {
+        "taskforge.rootPath": {
           "type": "string",
           "default": "",
-          "description": "Absolute path to the Work Command Center repo (the folder containing vite.config.mjs). Leave blank to auto-detect from open workspace folders, then fall back to the extension's own location."
+          "description": "Absolute path to the TaskForge repo (the folder containing vite.config.mjs). Leave blank to auto-detect from open workspace folders, then fall back to the extension's own location."
         },
-        "wcc.port": {
+        "taskforge.port": {
           "type": "number",
           "default": 7777,
-          "description": "Port WCC listens on (mirrors WCC_PORT)."
+          "description": "Port TaskForge listens on (mirrors TASKFORGE_PORT)."
         },
-        "wcc.host": {
+        "taskforge.host": {
           "type": "string",
           "default": "127.0.0.1",
-          "description": "Host used to build the WCC URL rendered in the webview (e.g. 127.0.0.1 or wcc)."
+          "description": "Host used to build the TaskForge URL rendered in the webview (e.g. 127.0.0.1 or taskforge)."
         }
       }
     }

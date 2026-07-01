@@ -1,13 +1,13 @@
 ---
 name: feature-stream-caveman
-description: Token-lean variant of the supervised feature-stream loop. Drives the exact same GSD ↔ WCC mechanics as feature-stream, but engages the caveman plugin so conversational narration is compressed (~65% fewer output tokens) while machine-parsed artifacts stay verbatim. Use when the user says "feature stream caveman", "/feature-stream-caveman", or wants the supervised GSD ↔ WCC loop run token-lean. Three subcommands: start, refresh, integrate.
+description: Token-lean variant of the supervised feature-stream loop. Drives the exact same GSD ↔ TaskForge mechanics as feature-stream, but engages the caveman plugin so conversational narration is compressed (~65% fewer output tokens) while machine-parsed artifacts stay verbatim. Use when the user says "feature stream caveman", "/feature-stream-caveman", or wants the supervised GSD ↔ TaskForge loop run token-lean. Three subcommands: start, refresh, integrate.
 argument-hint: "start --repo <path> --slug <short>  ·  refresh --id <id> --worktree <path>  ·  integrate --worktree <path> --into <branch>"
 ---
 
 # feature-stream-caveman — the token-lean overlay
 
 This is the **caveman wiring** over the generic `feature-stream` skill. The
-generic skill (CORE) owns the GSD ↔ WCC mechanics; this overlay adds exactly one
+generic skill (CORE) owns the GSD ↔ TaskForge mechanics; this overlay adds exactly one
 orthogonal thing: **caveman-style compressed narration** for the conversational
 layer of the loop.
 
@@ -35,10 +35,10 @@ must never bleed into them:
 
 - The capture markers `**Decision:**` / `**Open question:**` / `**Blocker:**` —
   `capture-gsd` parses them literally.
-- The `.planning/` tree — `import-gsd` re-projects it verbatim into WCC.
+- The `.planning/` tree — `import-gsd` re-projects it verbatim into TaskForge.
 - Commit messages, thread bodies, and any text a CLI reads back.
 
-So: narrate the loop in caveman; write the distilled outcome line and all GSD/WCC
+So: narrate the loop in caveman; write the distilled outcome line and all GSD/TaskForge
 artifacts in full, exact form. When in doubt, an artifact is *not* narration.
 
 ## Invocation
@@ -50,24 +50,24 @@ the session, then drive the standard feature-stream subcommands unchanged:
 
 ```bash
 node bin/feature-stream.mjs start --repo <path-to-repo> --slug <short> \
-  [--base <ref>] [--id <wcc-id>] [--title "..."] [--branch <name>]
+  [--base <ref>] [--id <taskforge-id>] [--title "..."] [--branch <name>]
 ```
 
 Same semantics as `feature-stream` start: worktree + branch off base, GSD
-workstream, WCC mirror (`work/<wcc-id>/`). Narrate the result token-lean.
+workstream, TaskForge mirror (`work/<taskforge-id>/`). Narrate the result token-lean.
 
 ### 2. refresh — the checkpoint mirror
 
 ```bash
-node bin/feature-stream.mjs refresh --id <wcc-id> --worktree <path> [--workstream <name>] [--base <ref>]
+node bin/feature-stream.mjs refresh --id <taskforge-id> --worktree <path> [--workstream <name>] [--base <ref>]
 ```
 
-Review on WCC, discuss in threads. Mark each outcome with a single distilled
+Review on TaskForge, discuss in threads. Mark each outcome with a single distilled
 line — `**Decision:**` / `**Open question:**` / `**Blocker:**` — **in full form,
 not compressed** — then capture it back:
 
 ```bash
-node bin/capture-gsd.mjs --id <wcc-id> --planning <worktree>/.planning
+node bin/capture-gsd.mjs --id <taskforge-id> --planning <worktree>/.planning
 ```
 
 ### 3. integrate

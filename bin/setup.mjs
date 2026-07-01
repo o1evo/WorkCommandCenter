@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-// One-step WCC setup, run by `npm run setup` (after `npm install`):
+// One-step TaskForge setup, run by `npm run setup` (after `npm install`):
 //   1. install the skills globally (idempotent — delegates to install-skill.mjs)
-//   2. OPTIONALLY add a friendly /etc/hosts alias so you can open WCC at
+//   2. OPTIONALLY add a friendly /etc/hosts alias so you can open TaskForge at
 //      http://<alias>:<port> instead of http://127.0.0.1:<port>
 //
 // Everything is idempotent and interactive — safe to re-run. The hosts edit is
 // only ever applied after you say yes; otherwise we print the manual command.
 //
 // Env knobs (shared with vite.config.mjs):
-//   WCC_PORT        default 7777   — the port WCC listens on
-//   WCC_HOST        default wcc — the alias to map to 127.0.0.1
-//   WCC_HOSTS_FILE  default /etc/hosts (or the Windows hosts path) — overridable for testing
-//   WCC_SKIP_SKILL_INSTALL=1        — skip step 1 (just (re)configure the alias)
+//   TASKFORGE_PORT        default 7777   — the port TaskForge listens on
+//   TASKFORGE_HOST        default taskforge — the alias to map to 127.0.0.1
+//   TASKFORGE_HOSTS_FILE  default /etc/hosts (or the Windows hosts path) — overridable for testing
+//   TASKFORGE_SKIP_SKILL_INSTALL=1        — skip step 1 (just (re)configure the alias)
 // Extra args (e.g. --copy, --force) are passed through to install-skill.mjs.
 
 import { spawnSync } from 'node:child_process';
@@ -21,15 +21,15 @@ import { readFileSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const PORT = Number(process.env.WCC_PORT) || 7777;
-const HOST_ALIAS = process.env.WCC_HOST || 'wcc';
+const PORT = Number(process.env.TASKFORGE_PORT) || 7777;
+const HOST_ALIAS = process.env.TASKFORGE_HOST || 'taskforge';
 const IS_WIN = process.platform === 'win32';
-const HOSTS_FILE = process.env.WCC_HOSTS_FILE
+const HOSTS_FILE = process.env.TASKFORGE_HOSTS_FILE
   || (IS_WIN ? 'C:\\Windows\\System32\\drivers\\etc\\hosts' : '/etc/hosts');
 const URL = `http://${HOST_ALIAS}:${PORT}`;
 
 // ── 1. install skills globally ──
-if (process.env.WCC_SKIP_SKILL_INSTALL !== '1') {
+if (process.env.TASKFORGE_SKIP_SKILL_INSTALL !== '1') {
   const r = spawnSync('node', [join(ROOT, 'bin', 'install-skill.mjs'), ...process.argv.slice(2)], { stdio: 'inherit' });
   if (r.status !== 0) process.exit(r.status || 1);
 }
@@ -42,8 +42,8 @@ async function offerHostsAlias() {
   try { hosts = readFileSync(HOSTS_FILE, 'utf8'); } catch { /* unreadable — fall through to manual */ }
 
   // Already mapped? Match the alias as a whole hosts field (preceded by whitespace,
-  // followed by whitespace or EOL) so a bare alias like `wcc` is NOT considered present
-  // just because `wcc.test` is — the trailing `(?![\w.-])` rules out `wcc.<anything>`.
+  // followed by whitespace or EOL) so a bare alias like `taskforge` is NOT considered present
+  // just because `taskforge.test` is — the trailing `(?![\w.-])` rules out `taskforge.<anything>`.
   const aliasWord = HOST_ALIAS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   if (new RegExp(`^[^#\\n]*\\s${aliasWord}(?![\\w.-])`, 'm').test(hosts)) {
     console.log(`\n= ${HOST_ALIAS} already maps in ${HOSTS_FILE} — open ${URL}`);
@@ -52,7 +52,7 @@ async function offerHostsAlias() {
 
   // Non-interactive (CI / piped) — don't prompt; just show how.
   if (!process.stdin.isTTY) {
-    console.log(`\nTip: add a "${HOST_ALIAS}" alias to open WCC at ${URL}:`);
+    console.log(`\nTip: add a "${HOST_ALIAS}" alias to open TaskForge at ${URL}:`);
     printManual();
     return;
   }
@@ -74,7 +74,7 @@ async function offerHostsAlias() {
   const line = `127.0.0.1 ${HOST_ALIAS}`;
   const r = spawnSync('sudo', ['sh', '-c', `printf '%s\\n' ${JSON.stringify(line)} >> ${JSON.stringify(HOSTS_FILE)}`], { stdio: 'inherit' });
   if (r.status === 0) {
-    console.log(`\n+ Added "${line}" to ${HOSTS_FILE}. Open WCC at ${URL}`);
+    console.log(`\n+ Added "${line}" to ${HOSTS_FILE}. Open TaskForge at ${URL}`);
   } else {
     console.log('\n! Could not edit the hosts file automatically. Add it manually:');
     printManual();

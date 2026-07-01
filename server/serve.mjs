@@ -9,10 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { createApi } from './api.mjs';
 
 const ROOT    = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const DIST    = process.env.WCC_DIST_DIR    || join(ROOT, 'dist');
-const WORK_DIR = process.env.WCC_WORK_DIR || join(ROOT, 'work');
-const PORT    = Number(process.env.WCC_PORT) || 7777;
-const HOST    = process.env.WCC_BIND || '127.0.0.1';  // container sets 0.0.0.0
+const DIST    = process.env.TASKFORGE_DIST_DIR    || join(ROOT, 'dist');
+const WORK_DIR = process.env.TASKFORGE_WORK_DIR || join(ROOT, 'work');
+const PORT    = Number(process.env.TASKFORGE_PORT) || 7777;
+const HOST    = process.env.TASKFORGE_BIND || '127.0.0.1';  // container sets 0.0.0.0
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -62,12 +62,12 @@ const server = createServer(async (req, res) => {
     if (req.method === 'GET' || req.method === 'HEAD') return void serveStatic(req, res);
     res.writeHead(404); res.end('not found');
   } catch (err) {
-    console.error('[wcc] request error:', err);
+    console.error('[taskforge] request error:', err);
     if (!res.headersSent) res.writeHead(500);
     res.end('internal error');
   }
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[wcc] serving ${DIST} + file-bridge on http://${HOST}:${PORT}  (work: ${WORK_DIR})`);
+  console.log(`[taskforge] serving ${DIST} + file-bridge on http://${HOST}:${PORT}  (work: ${WORK_DIR})`);
 });

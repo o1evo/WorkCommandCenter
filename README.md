@@ -1,4 +1,4 @@
-# Work Command Center (WCC)
+# TaskForge
 
 **A local-first workspace where a Claude Code session reviews your code and tracks your work** — three tabs per task, all backed by plain local files. No DB, no telemetry, nothing leaves your machine.
 
@@ -8,8 +8,8 @@ keyed by its task id, across **three tabs that share one `work/<id>/` directory*
 
 | tab | what it is | source of truth | authored via |
 |-----|-----------|-----------------|--------------|
-| **Log** | a bespoke, interactive React work-log page (status, findings, timeline, follow-ups) with chat threads anchored to any text | `work/<id>/Page.jsx` | `wcc-worklog` skill |
-| **Code Review** | an annotated diff with per-hunk / per-line / per-finding chat threads | `work/<id>/thread.json` | `wcc-review` skill |
+| **Log** | a bespoke, interactive React work-log page (status, findings, timeline, follow-ups) with chat threads anchored to any text | `work/<id>/Page.jsx` | `taskforge-worklog` skill |
+| **Code Review** | an annotated diff with per-hunk / per-line / per-finding chat threads | `work/<id>/thread.json` | `taskforge-review` skill |
 | **QA Plan** | a plain-Markdown QA test plan with a **Copy markdown** button (lift it into a ticket/email) | `work/<id>/qa-plan.md` | hand-written markdown |
 
 In every tab a *separate Claude Code session* (the "reviewer") joins the chat by
@@ -22,23 +22,23 @@ review never goes anywhere.
   so the whole tool is one process. Deps: `react`, `react-dom`, `vite`,
   `prismjs` (offline syntax highlighting), `@babel/standalone` (transforms
   `Page.jsx` in the browser — no build step), `marked` (Markdown for messages,
-  QA plans, and `wcc.Markdown`). No DB, no telemetry.
+  QA plans, and `taskforge.Markdown`). No DB, no telemetry.
 - **Navigation:** a **⌘K command palette** switches tasks (fuzzy filter, `#tag`
   to narrow), a **Manage** modal renames/deletes them, and an in-page **⌘F find
   bar** searches the rendered content (the editor's native find can't reach
   inside the diff/page). Three built-in **themes** (Navy / Dark neutral / Light)
-  drive both the chrome and Log pages via `wcc.theme`.
+  drive both the chrome and Log pages via `taskforge.theme`.
 
 ## Quick start
 
 **Easiest — let Claude do it:** open this repo in **Claude Code** and ask it to
-*"set up and start WCC"*. It runs setup and launches the server for you.
+*"set up and start TaskForge"*. It runs setup and launches the server for you.
 
 Or by hand:
 
 ```bash
-git clone https://github.com/o1evo/WorkCommandCenter.git
-cd WorkCommandCenter
+git clone https://github.com/o1evo/TaskForge.git
+cd TaskForge
 npm run setup     # installs deps, makes the skills global, offers a localhost hosts alias
 npm run review    # serves on http://127.0.0.1:7777
 ```
@@ -48,20 +48,20 @@ three tabs immediately. Delete `work/sample/` once you've imported your own.
 
 ## Uninstall
 
-Ask Claude to *"uninstall WCC"*, or run:
+Ask Claude to *"uninstall TaskForge"*, or run:
 
 ```bash
 npm run uninstall-skill     # removes the global skill symlinks (safe; --force also removes copies)
 ```
 
-Then, if you used them: `claude mcp remove wcc` (the optional server MCP), drop the
-`127.0.0.1 wcc` line from `/etc/hosts`, and delete this folder (that also clears the
-`.wcc/` runtime state). Your `work/` data is just files — nothing is left behind elsewhere.
+Then, if you used them: `claude mcp remove taskforge` (the optional server MCP), drop the
+`127.0.0.1 taskforge` line from `/etc/hosts`, and delete this folder (that also clears the
+`.taskforge/` runtime state). Your `work/` data is just files — nothing is left behind elsewhere.
 
-`npm run setup` also asks whether to add a `127.0.0.1 wcc` line to `/etc/hosts`
-(sudo, you can decline) so you can open WCC at **http://wcc:7777** instead of the
-loopback IP. The port and alias are configurable: set `WCC_PORT` (default `7777`) and/or
-`WCC_HOST` (default `wcc`) — both `npm run setup` and `npm run review` read them.
+`npm run setup` also asks whether to add a `127.0.0.1 taskforge` line to `/etc/hosts`
+(sudo, you can decline) so you can open TaskForge at **http://taskforge:7777** instead of the
+loopback IP. The port and alias are configurable: set `TASKFORGE_PORT` (default `7777`) and/or
+`TASKFORGE_HOST` (default `taskforge`) — both `npm run setup` and `npm run review` read them.
 `npm run install-skill` alone (no deps, no alias) still works if you only want the skills global.
 
 Open the printed URL. The app hosts **multiple tasks at once** — switch between
@@ -70,47 +70,47 @@ modal); the 3s poll is scoped to the selected id.
 
 **Requirements:** Node 18+ (the scripts use `node:` built-ins and `import.meta`).
 
-### Server lifecycle via the `wcc` MCP (optional)
+### Server lifecycle via the `taskforge` MCP (optional)
 
 Instead of keeping a terminal on `npm run review`, you can let a Claude session
 manage the server through a tiny **zero-dependency MCP controller**
-([bin/wcc-mcp.mjs](bin/wcc-mcp.mjs)). Register it once (user scope → available in
+([bin/taskforge-mcp.mjs](bin/taskforge-mcp.mjs)). Register it once (user scope → available in
 every project):
 
 ```bash
-claude mcp add --scope user wcc -- node /absolute/path/to/CodeReviews/bin/wcc-mcp.mjs
+claude mcp add --scope user taskforge -- node /absolute/path/to/CodeReviews/bin/taskforge-mcp.mjs
 ```
 
-Claude Code spawns the controller when a session starts; it **autostarts WCC**
-(unless `WCC_AUTOSTART=0`) and runs it **detached**, so the server outlives the
+Claude Code spawns the controller when a session starts; it **autostarts TaskForge**
+(unless `TASKFORGE_AUTOSTART=0`) and runs it **detached**, so the server outlives the
 MCP and the session. Tools:
 
-- `wcc_status` — running? URL + listening PIDs + log path.
-- `wcc_start` / `wcc_stop` — bring it up (no-op if already up) / shut it down.
-- **`wcc_restart`** — reload after editing server-side code (`server/*.mjs`,
+- `taskforge_status` — running? URL + listening PIDs + log path.
+- `taskforge_start` / `taskforge_stop` — bring it up (no-op if already up) / shut it down.
+- **`taskforge_restart`** — reload after editing server-side code (`server/*.mjs`,
   `vite.config.mjs`), which Vite only reads at startup. (Client `src/` changes
   hot-reload — no restart needed.)
-- `wcc_logs` — tail the server log.
+- `taskforge_logs` — tail the server log.
 
-Runtime state (pidfile + log) lives in the gitignored `.wcc/`. The controller is
+Runtime state (pidfile + log) lives in the gitignored `.taskforge/`. The controller is
 only a *remote*: it acts while a Claude session exists, so it doesn't replace a
-`launchd`/login daemon if you want WCC up before any session (or across reboots).
+`launchd`/login daemon if you want TaskForge up before any session (or across reboots).
 
 ### Skills (the reviewer/author automation)
 
 Claude Code skills ship **inside this repo** under
 [.claude/skills/](.claude/skills/). The two core ones:
 
-- **`wcc-review`** — the reviewer bridge: answer threads, import / refresh /
+- **`taskforge-review`** — the reviewer bridge: answer threads, import / refresh /
   seed diffs (see "Participating as the reviewer").
-- **`wcc-worklog`** — author the Log page + QA plan for a task.
+- **`taskforge-worklog`** — author the Log page + QA plan for a task.
 
 Two more drive larger workflows (see their sections below):
 
 - **`gsd-bridge`** — mirror a [GSD / gsd-core](https://github.com/open-gsd/gsd-core) `.planning/` tree
-  into a WCC task, and capture resolved review threads back into it.
+  into a TaskForge task, and capture resolved review threads back into it.
 - **`feature-stream`** — a supervised loop that turns a unit of work into a
-  feature worktree + GSD workstream + a live WCC mirror.
+  feature worktree + GSD workstream + a live TaskForge mirror.
 
 When you run Claude Code **inside this repo**, project-level skills are
 auto-discovered — **nothing to install.** To also drive reviews from *other*
@@ -151,7 +151,7 @@ UI  ──POST /message──▶  thread.json + Page.jsx + qa-plan.md  ◀──
   polls instead.
 - **Page runtime** ([src/components/PageRuntime.jsx](src/components/PageRuntime.jsx)):
   the Log page is JSX compiled in the browser with `@babel/standalone` and run as
-  `function Page({ wcc }) { … }` (no imports/exports; `React` + hooks in scope). A
+  `function Page({ taskforge }) { … }` (no imports/exports; `React` + hooks in scope). A
   compile or runtime error shows an error panel, never a white screen.
   **SECURITY:** this evaluates Claude-authored code — acceptable only because the
   tool is localhost-only and single-user. Do not expose it.
@@ -208,7 +208,7 @@ for all three tabs is what pairs the work log, its diff, and its QA plan.
   | `"<hunkId>"` | hunk-level | Code Review |
   | `"<annotationId>"` | discussion under one finding | Code Review |
   | `"<hunkId>#L<n>"` | inline comment on a specific line | Code Review |
-  | `"log:<anchor>"` | a thread on the Log page — either a free-selection comment or an author-placed `<wcc.Thread>` | Log |
+  | `"log:<anchor>"` | a thread on the Log page — either a free-selection comment or an author-placed `<taskforge.Thread>` | Log |
 - **Anchors** (free-selection Log comments) live alongside `threads` and carry the
   quoted text plus `prefix`/`suffix` context so a comment **re-attaches by fuzzy
   text match** after Claude edits `Page.jsx`; if the quote no longer resolves it's
@@ -218,7 +218,7 @@ for all three tabs is what pairs the work log, its diff, and its QA plan.
 
 Messages render **Markdown** via `marked` ([src/components/Markdown.jsx](src/components/Markdown.jsx)),
 with fenced code blocks Prism-highlighted ([src/highlight.js](src/highlight.js)).
-The same renderer backs `wcc.Markdown` on a Log page and the whole QA Plan tab.
+The same renderer backs `taskforge.Markdown` on a Log page and the whole QA Plan tab.
 
 ## API
 
@@ -275,18 +275,18 @@ on the next 3s poll (no restart), and the tab only appears when its file exists.
 
 - **Log page → `work/<id>/Page.jsx`** — bespoke interactive React for *this*
   task (status pill, findings, dated timeline, follow-ups). Contract: define
-  `function Page({ wcc }) { … }`, **no imports/exports**; `React` + hooks are in
-  scope and `wcc` is injected (data + `<wcc.Thread target="log:…">` to pin a
-  discussion + `<wcc.Markdown>`). Readers can also select any text on the page to
+  `function Page({ taskforge }) { … }`, **no imports/exports**; `React` + hooks are in
+  scope and `taskforge` is injected (data + `<taskforge.Thread target="log:…">` to pin a
+  discussion + `<taskforge.Markdown>`). Readers can also select any text on the page to
   drop a 💬 comment (a `log:` anchor) — no code needed. Authored via the
-  **`wcc-worklog`** skill.
+  **`taskforge-worklog`** skill.
 - **QA plan → `work/<id>/qa-plan.md`** — plain Markdown (no JSX), rendered with
   a **Copy markdown** button so QA can lift it into your tracker/email. Group by
   business capability, tier P0→P3, and give each case Do / Pass / Hits. Also
-  covered by the `wcc-worklog` skill.
+  covered by the `taskforge-worklog` skill.
 
-> **Skills that drive this app:** `wcc-worklog` (start a task, author the Log page
-> + QA plan) and `wcc-review` (the reviewer bridge — answer threads, import/
+> **Skills that drive this app:** `taskforge-worklog` (start a task, author the Log page
+> + QA plan) and `taskforge-review` (the reviewer bridge — answer threads, import/
 > refresh/seed diffs). Both are local-only and route through the same
 > `thread.json`.
 
@@ -294,7 +294,7 @@ on the next 3s poll (no restart), and the tab only appears when its file exists.
 
 If your work is tracked in a [GSD / gsd-core](https://github.com/open-gsd/gsd-core) `.planning/` tree,
 the **`gsd-bridge`** skill (CLIs [bin/import-gsd.mjs](bin/import-gsd.mjs) /
-[bin/capture-gsd.mjs](bin/capture-gsd.mjs)) wires it to a WCC task — no
+[bin/capture-gsd.mjs](bin/capture-gsd.mjs)) wires it to a TaskForge task — no
 hand-authoring:
 
 ```bash
@@ -311,11 +311,11 @@ UAT matrix); both survive a `--refresh` and the Code Review tab still streams th
 diff live. It can also inline an optional **custom tab** for extra planning prose.
 `npm run import-gsd` / `npm run capture-gsd` wrap the same CLIs.
 
-## feature-stream — supervised GSD ↔ WCC loop
+## feature-stream — supervised GSD ↔ TaskForge loop
 
 The **`feature-stream`** skill ([bin/feature-stream.mjs](bin/feature-stream.mjs))
 is a higher-level entrypoint: it turns a unit of work into a feature **git
-worktree** + a **GSD workstream** + a **live WCC mirror**, then you drive the GSD
+worktree** + a **GSD workstream** + a **live TaskForge mirror**, then you drive the GSD
 phases yourself and `refresh`/`integrate` at each checkpoint. Three subcommands —
 `start`, `refresh`, `integrate`. Workstation-specific overlays of this loop also
 ship as skills in [.claude/skills/](.claude/skills/).
@@ -324,17 +324,17 @@ ship as skills in [.claude/skills/](.claude/skills/).
 
 [bin/relay-*](bin/) is an experimental loop where a headless Claude works a story
 and, when it hits a real product decision, posts a **code-anchored question into
-WCC** and stops; a human answers in the diff context and clicks **▶ Resume
+TaskForge** and stops; a human answers in the diff context and clicks **▶ Resume
 runner** (`POST /api/review/:id/run`). See [bin/relay-README.md](bin/relay-README.md).
 **Security:** that endpoint runs a local process with no auth — fine for a
-127.0.0.1 single box, but **gate it behind authentication before exposing WCC on
+127.0.0.1 single box, but **gate it behind authentication before exposing TaskForge on
 any network.**
 
 ## VS Code extension
 
-[vscode-extension/](vscode-extension/) renders WCC inside a VS Code editor tab,
-with a **▶ Start WCC** button when the server is down and a status-bar toggle. It
-shares the same detached server (pid/log in `.wcc/`) as the MCP, so an external
+[vscode-extension/](vscode-extension/) renders TaskForge inside a VS Code editor tab,
+with a **▶ Start TaskForge** button when the server is down and a status-bar toggle. It
+shares the same detached server (pid/log in `.taskforge/`) as the MCP, so an external
 start/stop is reflected within 3s. Build + install:
 
 ```bash
@@ -358,15 +358,15 @@ two layers, both local-only and append-oriented:
    valid JSON. Append-only — never edit/delete existing messages or `diff` text;
    never send content off-machine.
 
-2. **The `wcc-review` skill** (recommended) — ships in-repo at
-   [.claude/skills/wcc-review/](.claude/skills/wcc-review/) and
+2. **The `taskforge-review` skill** (recommended) — ships in-repo at
+   [.claude/skills/taskforge-review/](.claude/skills/taskforge-review/) and
    automates the same protocol safely. It auto-triggers when you ask Claude to
    "answer the review questions," "reply in the review app," import/seed a diff,
    etc. It ships helper scripts so you never hand-write into the file (run them
    from the repo root; they resolve the review root automatically):
 
    ```bash
-   S=.claude/skills/wcc-review/scripts
+   S=.claude/skills/taskforge-review/scripts
    node $S/list_pending.mjs --id <review-id>                       # see unanswered author msgs
    node $S/answer.mjs --id <review-id> --msg <author-msg-id|next> --file reply.txt
    ```
@@ -402,11 +402,11 @@ lowercase slug):
 # Review uncommitted work in some repo:
 node bin/import.mjs --repo /path/to/repo --base main --head WORKTREE \
   --id my-change --title "My change"
-npm run review        # open http://127.0.0.1:7777 (or http://wcc:7777) and pick "my-change"
+npm run review        # open http://127.0.0.1:7777 (or http://taskforge:7777) and pick "my-change"
 ```
 
 To seed curated findings as annotations, write a seed JSON (shape in
-[.claude/skills/wcc-review/references/thread-format.md](.claude/skills/wcc-review/references/thread-format.md))
+[.claude/skills/taskforge-review/references/thread-format.md](.claude/skills/taskforge-review/references/thread-format.md))
 and pass `--seed work/seeds/<id>.json`. Everything under `work/` is
 gitignored, so your diffs and conversations never get committed.
 
