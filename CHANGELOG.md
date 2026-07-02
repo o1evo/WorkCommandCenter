@@ -10,6 +10,17 @@ both.
 
 _Work landed on `main` but not yet tagged goes here._
 
+## [0.1.3-beta.2]
+
+_Prerelease._
+
+- Removed the committed `node_modules` symlink (a self-referential link that broke
+  `npm install` / the build on Windows and clean checkouts) and added
+  `package-lock.json`.
+- Editor-tab icon is now themed: `panel.iconPath` points at fixed light/dark grey
+  variants (`taskforge-tab-{light,dark}.svg`) so the tab icon matches other tabs
+  instead of rendering a solid-black currentColor glyph.
+
 ## [0.1.3-beta.1]
 
 _Prerelease._
@@ -49,7 +60,8 @@ Baseline release.
 - VS Code extension (webview panel + Start button + status bar).
 - Optional `taskforge` MCP controller for detached server lifecycle.
 
-[Unreleased]: https://github.com/o1evo/TaskForge/compare/v0.1.3-beta.1...HEAD
+[Unreleased]: https://github.com/o1evo/TaskForge/compare/v0.1.3-beta.2...HEAD
+[0.1.3-beta.2]: https://github.com/o1evo/TaskForge/compare/v0.1.3-beta.1...v0.1.3-beta.2
 [0.1.3-beta.1]: https://github.com/o1evo/TaskForge/compare/v0.1.2-beta.1...v0.1.3-beta.1
 [0.1.2-beta.1]: https://github.com/o1evo/TaskForge/releases/tag/v0.1.2-beta.1
 [0.1.0]: https://github.com/o1evo/TaskForge/releases/tag/v0.1.0
